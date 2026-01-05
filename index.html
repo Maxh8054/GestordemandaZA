@@ -3091,7 +3091,7 @@
     let recognition = null;
     let selectedOverdueDemands = new Set();
 
-  const SERVER_URL = window.location.origin;
+  let SERVER_URL = window.location.origin;
 let serverConnected = false;
 
     // Inicialização
@@ -3402,15 +3402,15 @@ async function verificarStatusServidor() {
     }
     
     if (connected && workingUrl) {
-        serverConnected = true;
-        SERVER_URL = workingUrl; // Atualiza a URL global
-        statusElement.className = 'server-status connected';
-        statusText.textContent = 'Servidor conectado';
-        console.log(`Conectado ao servidor: ${workingUrl}`);
-        
-        // Se conectou, carrega os dados
-        carregarDadosDoServidor();
-    } else {
+    serverConnected = true;
+    SERVER_URL = workingUrl; // ERRO: Tentando reatribuir uma constante
+    statusElement.className = 'server-status connected';
+    statusText.textContent = 'Servidor conectado';
+    console.log(`Conectado ao servidor: ${workingUrl}`);
+    
+    // Se conectou, carrega os dados
+    carregarDadosDoServidor();
+} else {
         serverConnected = false;
         statusElement.className = 'server-status disconnected';
         statusText.textContent = 'Servidor desconectado';
