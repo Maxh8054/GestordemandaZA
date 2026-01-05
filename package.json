@@ -1,13 +1,14 @@
 {
   "name": "gestor-demandas",
   "version": "1.0.0",
-  "description": "Servidor de demandas para Gestor",
+  "description": "Sistema de Gestão de Demandas Corporativo",
   "main": "server.js",
   "engines": {
     "node": ">=16.0.0"
   },
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "nodemon server.js"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",
@@ -19,6 +20,16 @@
     "socket.io": "^4.7.2",
     "sqlite3": "^5.1.6"
   },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
   "author": "Maxh8054",
-  "license": "ISC"
+  "license": "ISC",
+  "keywords": [
+    "gestao",
+    "demandas",
+    "corporativo",
+    "nodejs",
+    "express"
+  ]
 }
