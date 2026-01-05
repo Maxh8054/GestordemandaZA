@@ -1433,12 +1433,12 @@
             margin-bottom: 20px;
             min-height: 600px;
             position: relative;
-            padding-top: 60px;
+            padding-top: 60px; /* Espaço reduzido para filtros menores */
         }
 
         .mindmap-container .card-header {
             position: absolute;
-            top: 10px;
+            top: 10px; /* Posicionado mais no topo */
             left: 10px;
             right: 10px;
             z-index: 100;
@@ -1446,32 +1446,32 @@
         }
 
         .mindmap-container .card-header h2 {
-            font-size: 1.2rem;
+            font-size: 1.2rem; /* Reduzido */
             margin: 0;
         }
 
         .mindmap-container .card-actions {
-            gap: 5px;
+            gap: 5px; /* Reduzido */
         }
 
         .mindmap-container .card-actions select,
         .mindmap-container .card-actions button {
-            font-size: 12px;
-            padding: 4px 8px;
+            font-size: 12px; /* Reduzido */
+            padding: 4px 8px; /* Reduzido */
         }
 
         .mindmap-node {
             position: absolute;
             background: var(--primary-color);
             color: white;
-            padding: 8px 12px;
+            padding: 8px 12px; /* Reduzido */
             border-radius: 20px;
             cursor: move;
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
             z-index: 10;
             transition: transform 0.2s;
-            font-size: 11px;
-            max-width: 100px;
+            font-size: 11px; /* Reduzido */
+            max-width: 100px; /* Reduzido */
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -1765,6 +1765,52 @@
             color: var(--info-color);
         }
 
+        /* Melhorias de layout */
+        .demanda-container {
+            margin-top: 30px;
+        }
+
+        .dashboard-section {
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--primary-color);
+        }
+
+        .stats-summary {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .stat-summary-item {
+            background: white;
+            padding: 15px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            text-align: center;
+            min-width: 150px;
+            margin-bottom: 10px;
+        }
+
+        .stat-summary-item h4 {
+            margin: 0 0 5px 0;
+            color: var(--dark-color);
+        }
+
+        .stat-summary-item p {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
         /* Dashboard melhorado */
         .dashboard-improved {
             background: white;
@@ -1972,8 +2018,10 @@
 <!-- Container de Login -->
 <div class="login-container" id="loginContainer">
     <div class="login-card">
+        <!-- COLE AQUI O BASE64 DO LOGO DA EMPRESA -->
         <div class="company-logo" style="margin: 0 auto 20px;">
             <!-- Cole aqui a tag <img> com o base64 do logo -->
+            <!-- Exemplo: <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..." alt="Logo"> -->
         </div>
         
         <h1><i class="fas fa-chart-line"></i> Portal do Gestor</h1>
@@ -2088,8 +2136,10 @@
     <div class="container">
         <header>
             <div class="header-logo">
+                <!-- COLE AQUI O BASE64 DO LOGO DA EMPRESA -->
                 <div class="company-logo">
                     <!-- Cole aqui a tag <img> com o base64 do logo -->
+                    <!-- Exemplo: <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..." alt="Logo"> -->
                 </div>
                 <div>
                     <h1><i class="fas fa-chart-line"></i> Portal do Gestor Corporativo</h1>
@@ -2425,7 +2475,7 @@
                                         <div class="category-option" onclick="selectCategory('Alinhamento Interno')">Alinhamento Interno</div>
                                         <div class="category-option" onclick="selectCategory('Tomada de Decisão')">Tomada de Decisão</div>
                                         <div class="category-option" onclick="selectCategory('Auditoria')">Auditoria</div>
-                                        <div class="category-option" onclick="selectCategory('Compras')">Compras</div>
+                                        <div class="category-option" onclick="selectCategory('Compliance')">Compliance</div>
                                         <div class="category-option" onclick="selectCategory('Técnico / Operacional')">Técnico / Operacional</div>
                                         <div class="category-option" onclick="selectCategory('Manutenção')">Manutenção</div>
                                         <div class="category-option" onclick="selectCategory('Implantação')">Implantação</div>
@@ -3171,6 +3221,38 @@
         });
     }
 
+    // Função para normalizar dados de uma demanda
+    function normalizarDadosDemanda(demanda) {
+        if (!demanda) return demanda;
+
+        // Garante que 'diasSemana' seja um array
+        if (typeof demanda.diasSemana === 'string') {
+            try {
+                demanda.diasSemana = JSON.parse(demanda.diasSemana);
+            } catch (e) {
+                demanda.diasSemana = [];
+            }
+        } else if (!Array.isArray(demanda.diasSemana)) {
+            demanda.diasSemana = [];
+        }
+
+        // Garante que 'atribuidos' seja um array
+        if (typeof demanda.atribuidos === 'string') {
+            try {
+                demanda.atribuidos = JSON.parse(demanda.atribuidos);
+            } catch (e) {
+                demanda.atribuidos = [];
+            }
+        } else if (!Array.isArray(demanda.atribuidos)) {
+            demanda.atribuidos = [];
+        }
+
+        // Garante que 'isRotina' seja um booleano
+        demanda.isRotina = Boolean(demanda.isRotina);
+
+        return demanda;
+    }
+
     // Funções de notificação
     function toggleNotificationsDropdown() {
         const dropdown = document.getElementById('notificationsDropdown');
@@ -3291,7 +3373,7 @@
         const statusText = document.getElementById('serverStatusText');
         
         try {
-            const response = await fetch(`${SERVER_URL}/health`);
+            const response = await fetch(`${SERVER_URL}/api/demandas`);
             if (response.ok) {
                 serverConnected = true;
                 statusElement.className = 'server-status connected';
@@ -4291,7 +4373,7 @@
             });
         }
 
-          const noteForm = document.getElementById('noteForm');
+        const noteForm = document.getElementById('noteForm');
         if (noteForm) {
             noteForm.addEventListener('submit', function(e) {
                 e.preventDefault();
