@@ -3091,8 +3091,8 @@
     let recognition = null;
     let selectedOverdueDemands = new Set();
 
-    const SERVER_URL = window.location.origin;
-    let serverConnected = false;
+  const SERVER_URL = window.location.origin;
+let serverConnected = false;
 
     // Inicialização
     document.addEventListener('DOMContentLoaded', () => {
@@ -3368,28 +3368,58 @@
     });
 
     // Verificação de status do servidor
-    async function verificarStatusServidor() {
-        const statusElement = document.getElementById('serverStatus');
-        const statusText = document.getElementById('serverStatusText');
-        
+    // Verificação de status do servidor
+async function verificarStatusServidor() {
+    const statusElement = document.getElementById('serverStatus');
+    const statusText = document.getElementById('serverStatusText');
+    
+    // Tenta diferentes URLs para o servidor
+    const serverUrls = [
+        window.location.origin,
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+        'https://gestordemandaza.onrender.com'
+    ];
+    
+    let connected = false;
+    let workingUrl = null;
+    
+    for (const url of serverUrls) {
         try {
-            const response = await fetch(`${SERVER_URL}/api/demandas`);
+            const response = await fetch(`${url}/health`, {
+                method: 'GET',
+                timeout: 5000
+            });
+            
             if (response.ok) {
-                serverConnected = true;
-                statusElement.className = 'server-status connected';
-                statusText.textContent = 'Servidor conectado';
-            } else {
-                throw new Error('Servidor não respondeu');
+                connected = true;
+                workingUrl = url;
+                break;
             }
         } catch (error) {
-            serverConnected = false;
-            statusElement.className = 'server-status disconnected';
-            statusText.textContent = 'Servidor desconectado';
+            console.log(`Tentativa de conexão com ${url} falhou:`, error.message);
         }
-        
-        setTimeout(verificarStatusServidor, 30000);
     }
-
+    
+    if (connected && workingUrl) {
+        serverConnected = true;
+        SERVER_URL = workingUrl; // Atualiza a URL global
+        statusElement.className = 'server-status connected';
+        statusText.textContent = 'Servidor conectado';
+        console.log(`Conectado ao servidor: ${workingUrl}`);
+        
+        // Se conectou, carrega os dados
+        carregarDadosDoServidor();
+    } else {
+        serverConnected = false;
+        statusElement.className = 'server-status disconnected';
+        statusText.textContent = 'Servidor desconectado';
+        console.error('Não foi possível conectar a nenhuma instância do servidor');
+    }
+    
+    // Verifica novamente a cada 30 segundos
+    setTimeout(verificarStatusServidor, 30000);
+}
     // Carregar usuários no select
     function carregarUsuariosNoSelect() {
         const userSelect = document.getElementById('userSelect');
@@ -3555,22 +3585,22 @@
     }
 
     // Inicializar sistema principal
-    async function inicializarSistemaPrincipal() {
-        carregarFuncionariosNosSelect();
-        await carregarDadosDoServidor();
-        inicializarImportacaoJSON();
-        carregarAnotacoes();
-        carregarMindmapLayout();
-        atualizarDashboard();
-        atualizarRanking();
-        inicializarGraficos();
-        
-        timerInterval = setInterval(atualizarTemposRestantes, 1000);
-        verificarLembretes();
-        
-        gerarNotificacoesAoLogar();
-    }
-
+    // Na função inicializarSistemaPrincipal, comente ou remova a linha que causa erro
+async function inicializarSistemaPrincipal() {
+    carregarFuncionariosNosSelect();
+    await carregarDadosDoServidor();
+    inicializarImportacaoJSON();
+    carregarAnotacoes();
+    // carregarMindmapLayout(); // Comente esta linha por enquanto
+    atualizarDashboard();
+    atualizarRanking();
+    inicializarGraficos();
+    
+    timerInterval = setInterval(atualizarTemposRestantes, 1000);
+    verificarLembretes();
+    
+    gerarNotificacoesAoLogar();
+}
     // Logout
     function logout() {
         if (confirm('Tem certeza que deseja sair do sistema?')) {
@@ -6907,6 +6937,53 @@
         
         exportarJSON(demandasFiltradas);
     }
+    // Função para alternar transcrição de fala
+function toggleTranscription() {
+    if (!recognition) {
+        showNotification('error', 'Erro', 'Reconhecimento de fala não suportado neste navegador');
+        return;
+    }
+    
+    const transcribeBtn = document.getElementById('transcribeBtn');
+    const transcriptionArea = document.getElementById('transcriptionArea');
+    
+    if (isTranscribing) {
+        recognition.stop();
+        isTranscribing = false;
+        transcribeBtn.innerHTML = '<i class="fas fa-microphone"></i> Transcrever';
+        transcriptionArea.classList.remove('active');
+    } else {
+        recognition.start();
+        isTranscribing = true;
+        transcribeBtn.innerHTML = '<i class="fas fa-stop"></i> Parar';
+        transcriptionArea.innerHTML = '<p>Ouvindo... Fale agora.</p>';
+        transcriptionArea.classList.add('active');
+    }
+}
+
+// Função para carregar layout do mapa mental
+function carregarMindmapLayout() {
+    const savedLayout = localStorage.getItem('mindmapLayout');
+    if (savedLayout) {
+        try {
+            mindmapNodes = JSON.parse(savedLayout);
+            atualizarMindmap();
+        } catch (e) {
+            console.error('Erro ao carregar layout do mapa mental:', e);
+            mindmapNodes = [];
+        }
+    } else {
+        mindmapNodes = [];
+    }
+}
+
+// Função para salvar layout do mapa mental
+function salvarMindmapLayout() {
+    if (!usuarioLogado) return;
+    
+    const storageKey = `mindmapLayout_${usuarioLogado.id}`;
+    localStorage.setItem(storageKey, JSON.stringify(mindmapNodes));
+}
 </script>
 
 </body>
