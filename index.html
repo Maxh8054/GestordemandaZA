@@ -3825,40 +3825,57 @@ function inicializarCampoMultiSelect() {
     }
 
     // Obter demandas para o usuário logado
-    function getDemandasParaUsuarioLogado() {
-        if (!usuarioLogado) return [];
-        
-        // Para gestores, mostrar todas as demandas dos colaboradores no dashboard
-        if (usuarioLogado.role === 'gestor') {
-            return todasDemandas;
-        }
-        
-        // Para funcionários, as demandas que eles criaram ou que foram atribuídas a eles
-        if (usuarioLogado.role === 'funcionario') {
-            return todasDemandas.filter(demanda => {
-                const eCriador = demanda.funcionarioId === usuarioLogado.id;
-                const eAtribuido = Array.isArray(demanda.atribuidos) && demanda.atribuidos.some(a => a.id === usuarioLogado.id);
-                return eCriador || eAtribuido;
-            });
-        }
-        return [];
-    }
-
-    // Obter demandas dos colaboradores
-    function getDemandasDosColaboradores() {
-        if (!usuarioLogado || usuarioLogado.role !== 'gestor') return [];
-        
-        // Para gestores, mostrar todas as demandas dos funcionários
+    // Obter demandas para o usuário logado
+function getDemandasParaUsuarioLogado() {
+    if (!usuarioLogado) return [];
+    
+    // Para gestores, mostrar apenas demandas que não foram atribuídas a outros
+    if (usuarioLogado.role === 'gestor') {
         return todasDemandas.filter(demanda => {
-            // Incluir demandas criadas pelo gestor e atribuídas a funcionários
-            if (demanda.funcionarioId === usuarioLogado.id && demanda.atribuidos && demanda.atribuidos.length > 0) {
-                return true;
-            }
+            // Se a demanda foi criada pelo gestor E não foi atribuída a ninguém OU foi atribuída ao próprio gestor
+            const eCriador = demanda.funcionarioId === usuarioLogado.id;
+            const naoAtribuida = !demanda.atribuidos || demanda.atribuidos.length === 0;
+            const atribuidaAMim = Array.isArray(demanda.atribuidos) && demanda.atribuidos.some(a => a.id === usuarioLogado.id);
             
-            // Incluir demandas criadas por funcionários
-            return usuarios.some(u => u.role === 'funcionario' && u.id === demanda.funcionarioId);
+            // Mostrar se: (é criador E não foi atribuída) OU (foi atribuída a mim)
+            return (eCriador && naoAtribuida) || atribuidaAMim;
         });
     }
+    
+    // Para funcionários, as demandas que eles criaram ou que foram atribuídas a eles
+    if (usuarioLogado.role === 'funcionario') {
+        return todasDemandas.filter(demanda => {
+            const eCriador = demanda.funcionarioId === usuarioLogado.id;
+            const eAtribuido = Array.isArray(demanda.atribuidos) && demanda.atribuidos.some(a => a.id === usuarioLogado.id);
+            return eCriador || eAtribuido;
+        });
+    }
+    return [];
+}
+
+    // Obter demandas dos colaboradores
+    // Obter demandas dos colaboradores
+function getDemandasDosColaboradores() {
+    if (!usuarioLogado || usuarioLogado.role !== 'gestor') return [];
+    
+    // Para gestores, mostrar todas as demandas que foram criadas por gestores E atribuídas a funcionários
+    return todasDemandas.filter(demanda => {
+        // Verificar se o criador é um gestor
+        const criadorEGestor = usuarios.some(u => u.role === 'gestor' && u.id === demanda.funcionarioId);
+        
+        // Verificar se foi atribuída a funcionários
+        const atribuidaAFuncionarios = Array.isArray(demanda.atribuidos) && 
+            demanda.atribuidos.some(a => {
+                const usuario = usuarios.find(u => u.id === a.id);
+                return usuario && usuario.role === 'funcionario';
+            });
+        
+        // Mostrar se: (foi criada por gestor E atribuída a funcionários) OU (foi criada por funcionário - para manter compatibilidade)
+        const criadaPorFuncionario = usuarios.some(u => u.role === 'funcionario' && u.id === demanda.funcionarioId);
+        
+        return (criadorEGestor && atribuidaAFuncionarios) || criadaPorFuncionario;
+    });
+}
 
     // Obter demandas filtradas
     function getDemandasFiltradas() {
@@ -4584,41 +4601,46 @@ async function salvarReprovacao() {
     }
 
     // Renderizar demandas
-    function renderizarDemandas() {
-        const demandasDoUsuario = getDemandasParaUsuarioLogado();
-        const statusFilter = document.getElementById('pendentesFilter')?.value || 'todos';
-        const monthFilter = document.getElementById('pendentesMonthFilter')?.value || '';
-        const yearFilter = document.getElementById('pendentesYearFilter')?.value || '';
+    // Renderizar demandas
+function renderizarDemandas() {
+    const demandasDoUsuario = getDemandasParaUsuarioLogado();
+    const statusFilter = document.getElementById('pendentesFilter')?.value || 'todos';
+    const monthFilter = document.getElementById('pendentesMonthFilter')?.value || '';
+    const yearFilter = document.getElementById('pendentesYearFilter')?.value || '';
 
-        const pendentesContainer = document.getElementById('pendentesContainer');
-        
-        if (pendentesContainer) pendentesContainer.innerHTML = '';
+    const pendentesContainer = document.getElementById('pendentesContainer');
+    
+    if (pendentesContainer) pendentesContainer.innerHTML = '';
 
-        let pendentes = demandasDoUsuario.filter(d => {
-            const matchesStatus = statusFilter === 'todos' || d.status === statusFilter;
-            
-            const matchesDate = matchesDateFilter(d, monthFilter, yearFilter);
-            
-            return matchesStatus && matchesDate && (
-                d.status === 'pendente' || 
-                d.status === 'reprovada' || 
-                d.status === 'reprovada_pelo_atribuido' ||
-                d.status === 'atribuida_pendente_aceitacao'
-            );
-        });
+    let pendentes = demandasDoUsuario.filter(d => {
+        const matchesStatus = statusFilter === 'todos' || d.status === statusFilter;
         
-        if (pendentesContainer) {
-            if (pendentes.length === 0) {
-                pendentesContainer.innerHTML = '<p>Nenhuma demanda pendente no momento.</p>';
+        const matchesDate = matchesDateFilter(d, monthFilter, yearFilter);
+        
+        return matchesStatus && matchesDate && (
+            d.status === 'pendente' || 
+            d.status === 'reprovada' || 
+            d.status === 'reprovada_pelo_atribuido' ||
+            d.status === 'atribuida_pendente_aceitacao'
+        );
+    });
+    
+    if (pendentesContainer) {
+        if (pendentes.length === 0) {
+            // Mensagem específica para gestores
+            if (usuarioLogado && usuarioLogado.role === 'gestor') {
+                pendentesContainer.innerHTML = '<p>Você não possui demandas pendentes. Demandas atribuídas a colaboradores aparecem na aba "Pendentes Colaboradores".</p>';
             } else {
-                pendentes.forEach(demanda => {
-                    const elemento = criarElementoDemanda(demanda);
-                    pendentesContainer.appendChild(elemento);
-                });
+                pendentesContainer.innerHTML = '<p>Nenhuma demanda pendente no momento.</p>';
             }
+        } else {
+            pendentes.forEach(demanda => {
+                const elemento = criarElementoDemanda(demanda);
+                pendentesContainer.appendChild(elemento);
+            });
         }
     }
-
+}
     // Renderizar análise
    // Renderizar análise
 function renderizarAnalise() {
@@ -4752,37 +4774,38 @@ function renderizarAprovadas() {
 }
 
     // Renderizar pendentes dos colaboradores
-    function renderizarPendentesColaboradores() {
-        const demandasColaboradores = getDemandasDosColaboradores();
-        const statusFilter = document.getElementById('colabFilter')?.value || 'todos';
-        const funcFilter = document.getElementById('colabFuncFilter')?.value || 'todos';
-        const localFilter = document.getElementById('colabLocalFilter')?.value || 'todos';
-        const monthFilter = document.getElementById('colabMonthFilter')?.value || '';
-        const yearFilter = document.getElementById('colabYearFilter')?.value || '';
+    // Renderizar pendentes dos colaboradores
+function renderizarPendentesColaboradores() {
+    const demandasColaboradores = getDemandasDosColaboradores();
+    const statusFilter = document.getElementById('colabFilter')?.value || 'todos';
+    const funcFilter = document.getElementById('colabFuncFilter')?.value || 'todos';
+    const localFilter = document.getElementById('colabLocalFilter')?.value || 'todos';
+    const monthFilter = document.getElementById('colabMonthFilter')?.value || '';
+    const yearFilter = document.getElementById('colabYearFilter')?.value || '';
 
-        const colabContainer = document.getElementById('colabContainer');
-        
-        if (colabContainer) colabContainer.innerHTML = '';
+    const colabContainer = document.getElementById('colabContainer');
+    
+    if (colabContainer) colabContainer.innerHTML = '';
 
-        let demandas = demandasColaboradores.filter(d => {
-            const matchesStatus = statusFilter === 'todos' || d.status === statusFilter;
-            const matchesFunc = funcFilter === 'todos' || d.funcionarioId == funcFilter;
-            const matchesLocal = localFilter === 'todos' || d.local === localFilter;
-            const matchesDate = matchesDateFilter(d, monthFilter, yearFilter);
-            
-            return matchesStatus && matchesFunc && matchesLocal && matchesDate;
-        });
+    let demandas = demandasColaboradores.filter(d => {
+        const matchesStatus = statusFilter === 'todos' || d.status === statusFilter;
+        const matchesFunc = funcFilter === 'todos' || d.funcionarioId == funcFilter;
+        const matchesLocal = localFilter === 'todos' || d.local === localFilter;
+        const matchesDate = matchesDateFilter(d, monthFilter, yearFilter);
         
-        if (colabContainer) {
-            if (demandas.length === 0) {
-                colabContainer.innerHTML = '<p>Nenhuma demanda dos colaboradores encontrada.</p>';
-            } else {
-                demandas.forEach(demanda => {
-                    colabContainer.appendChild(criarElementoDemanda(demanda));
-                });
-            }
+        return matchesStatus && matchesFunc && matchesLocal && matchesDate;
+    });
+    
+    if (colabContainer) {
+        if (demandas.length === 0) {
+            colabContainer.innerHTML = '<p>Nenhuma demanda dos colaboradores encontrada.</p>';
+        } else {
+            demandas.forEach(demanda => {
+                colabContainer.appendChild(criarElementoDemanda(demanda));
+            });
         }
     }
+}
 
     // Função para verificar se a data corresponde aos filtros de mês e ano
     function matchesDateFilter(demanda, monthFilter, yearFilter) {
