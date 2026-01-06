@@ -1905,6 +1905,43 @@
     -ms-user-select: auto;
     user-select: auto;
 }
+/* Adicione ao seu arquivo CSS */
+button.info {
+    background-color: var(--info-color);
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+button.info:hover {
+    background-color: #2980b9;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+button.info::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+button.info:active::before {
+    width: 300px;
+    height: 300px;
+}
     </style>
 </head>
 <body>
@@ -2738,7 +2775,23 @@
         </main>
     </div>
 </div>
-
+<!-- Adicione este modal após os outros modais existentes -->
+<div id="comentarioModal" class="modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="closeModal('comentarioModal')">&times;</span>
+        <h2 id="comentarioModalTitle">Adicionar Comentário</h2>
+        <form id="comentarioForm">
+            <div class="form-group">
+                <label for="comentarioText">Comentário:</label>
+                <textarea id="comentarioText" rows="5" required placeholder="Digite seu comentário..."></textarea>
+            </div>
+            <div class="form-group">
+                <button type="submit" class="success"><i class="fas fa-comment"></i> Adicionar Comentário</button>
+                <button type="button" class="secondary" onclick="closeModal('comentarioModal')"><i class="fas fa-times"></i> Cancelar</button>
+            </div>
+        </form>
+    </div>
+</div>
 <div id="resolucaoModal" class="modal">
     <div class="modal-content">
         <span class="close-btn" onclick="closeModal('resolucaoModal')">&times;</span>
@@ -7149,6 +7202,212 @@ async function importarDemandas() {
             showNotification('success', 'Gráfico Baixado', `O gráfico de ${chartType} foi baixado.`);
         }
     }
+    // Variável global para armazenar a demanda atual para comentários
+let demandaComentarioAtual = null;
+
+// Função para abrir o modal de comentários
+function abrirModalComentario(demandaId) {
+    const demanda = todasDemandas.find(d => d.id === demandaId);
+    if (!demanda) return;
+    
+    // Verificar se o usuário é o criador ou um atribuído
+    const eDono = usuarioLogado && usuarioLogado.id === demanda.funcionarioId;
+    const eAtribuido = usuarioLogado && Array.isArray(demanda.atribuidos) && demanda.atribuidos.some(a => a.id === usuarioLogado.id);
+    
+    if (!eDono && !eAtribuido) {
+        showNotification('error', 'Acesso Negado', 'Apenas o criador ou atribuídos podem adicionar comentários.');
+        return;
+    }
+    
+    demandaComentarioAtual = demanda;
+    document.getElementById('comentarioForm').reset();
+    showModal('comentarioModal', `Adicionar Comentário - ${demanda.nomeDemanda}`);
+}
+
+// Adicionar event listener para o formulário de comentários
+document.addEventListener('DOMContentLoaded', () => {
+    const comentarioForm = document.getElementById('comentarioForm');
+    if (comentarioForm) {
+        comentarioForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            await salvarComentario();
+        });
+    }
+});
+
+// Função para salvar o comentário
+async function salvarComentario() {
+    if (!demandaComentarioAtual) return;
+    
+    const comentarioText = document.getElementById('comentarioText').value;
+    
+    if (!comentarioText) {
+        showNotification('warning', 'Campo Obrigatório', 'Por favor, digite um comentário.');
+        return;
+    }
+    
+    // Inicializar array de comentários se não existir
+    if (!demandaComentarioAtual.comentariosUsuarios) {
+        demandaComentarioAtual.comentariosUsuarios = [];
+    }
+    
+    // Adicionar novo comentário
+    const novoComentario = {
+        id: Date.now(),
+        texto: comentarioText,
+        autor: usuarioLogado.nome,
+        autorId: usuarioLogado.id,
+        data: new Date().toISOString()
+    };
+    
+    demandaComentarioAtual.comentariosUsuarios.push(novoComentario);
+    
+    // Salvar no servidor
+    const dadosAtualizados = {
+        comentariosUsuarios: demandaComentarioAtual.comentariosUsuarios
+    };
+    
+    const sucesso = await atualizarDemandaNoServidor(demandaComentarioAtual.id, dadosAtualizados);
+    
+    if (sucesso) {
+        showNotification('success', 'Comentário Adicionado', 'Seu comentário foi adicionado com sucesso.');
+        closeModal('comentarioModal');
+        
+        // Se o modal de detalhes estiver aberto, atualizá-lo
+        const detailModal = document.getElementById('detailModal');
+        if (detailModal && detailModal.style.display === 'block') {
+            verDetalhes(demandaComentarioAtual.id);
+        }
+    }
+    
+    demandaComentarioAtual = null;
+}
+
+// Modificar a função verDetalhes para incluir os comentários
+function verDetalhes(id) {
+    const demanda = todasDemandas.find(d => d.id === id);
+    if (!demanda) return;
+    
+    // Normaliza os dados antes de exibir (criando uma nova constante)
+    const demandaNormalizada = normalizarDadosDemanda(demanda);
+    
+    // Verificar se o usuário pode adicionar comentários
+    const eDono = usuarioLogado && usuarioLogado.id === demandaNormalizada.funcionarioId;
+    const eAtribuido = usuarioLogado && Array.isArray(demandaNormalizada.atribuidos) && demandaNormalizada.atribuidos.some(a => a.id === usuarioLogado.id);
+    const podeComentar = eDono || eAtribuido;
+    
+    let tempoInfo = '';
+    if (demandaNormalizada.status === 'aprovada' && demandaNormalizada.dataConclusao) {
+        tempoInfo = `<p><strong>Desempenho de Tempo:</strong> ${calcularDesempenhoTempo(demandaNormalizada.dataCriacao, demandaNormalizada.dataConclusao, demandaNormalizada.dataLimite)}</p>`;
+    }
+    
+    let atribuidosInfo = '';
+    if (Array.isArray(demandaNormalizada.atribuidos) && demandaNormalizada.atribuidos.length > 0) {
+        atribuidosInfo = `<p><strong>Atribuída a:</strong> ${demandaNormalizada.atribuidos.map(a => a.nome).join(', ')}</p>`;
+    }
+    
+    // Adicionar informações sobre dias da semana se for rotina
+    let diasSemanaInfo = '';
+    if (demandaNormalizada.isRotina && Array.isArray(demandaNormalizada.diasSemana) && demandaNormalizada.diasSemana.length > 0) {
+        const nomesDias = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+        const diasFormatados = demandaNormalizada.diasSemana.map(dia => nomesDias[dia]).join(', ');
+        diasSemanaInfo = `<p><strong>Dias da Semana:</strong> ${diasFormatados}</p>`;
+    }
+    
+    // Renderizar comentários dos usuários
+    let comentariosUsuariosHTML = '';
+    if (demandaNormalizada.comentariosUsuarios && demandaNormalizada.comentariosUsuarios.length > 0) {
+        comentariosUsuariosHTML = `
+            <div style="background: #e3f2fd; padding: 15px; border-radius: 5px; margin-bottom: 15px;">
+                <h4 style="margin-top: 0; color: #1976d2;">💬 Comentários</h4>
+                ${demandaNormalizada.comentariosUsuarios.map(comentario => `
+                    <div style="background: white; padding: 10px; border-radius: 5px; margin-bottom: 10px; border-left: 3px solid #1976d2;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                            <strong>${comentario.autor}</strong>
+                            <small>${formatDate(comentario.data)}</small>
+                        </div>
+                        <p style="margin: 0; white-space: pre-wrap; line-height: 1.5;">${comentario.texto}</p>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+    
+    // Botão para adicionar comentário
+    let botaoComentario = '';
+    if (podeComentar && demandaNormalizada.status !== 'aprovada') {
+        botaoComentario = `
+            <div style="text-align: center; margin-top: 15px;">
+                <button class="info" onclick="abrirModalComentario(${demandaNormalizada.id})">
+                    <i class="fas fa-comment"></i> Adicionar Comentário
+                </button>
+            </div>
+        `;
+    }
+    
+    const content = `
+        <div class="demanda-details">
+            <h3>${demandaNormalizada.nomeDemanda || 'Sem Título'}</h3>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                <div>
+                    <p><strong>Funcionário:</strong> ${demandaNormalizada.nomeFuncionario}</p>
+                    <p><strong>Categoria:</strong> ${demandaNormalizada.categoria}</p>
+                    <p><strong>Local:</strong> ${demandaNormalizada.local || 'N/A'}</p>
+                    <p><strong>Prioridade:</strong> <span style="color: ${demandaNormalizada.prioridade === 'Importante' ? '#e74c3c' : demandaNormalizada.prioridade === 'Média' ? '#f39c12' : '#27ae60'}">${demandaNormalizada.prioridade}</span></p>
+                    <p><strong>Complexidade:</strong> ${demandaNormalizada.complexidade}</p>
+                </div>
+                <div>
+                    <p><strong>Status:</strong> ${demandaNormalizada.status.replace(/_/g, ' ')}</p>
+                    <p><strong>Data Criação:</strong> ${new Date(demandaNormalizada.dataCriacao).toLocaleDateString('pt-BR')}</p>
+                    <p><strong>Data Limite:</strong> ${new Date(demandaNormalizada.dataLimite).toLocaleDateString('pt-BR')}</p>
+                    ${demandaNormalizada.dataConclusao ? `<p><strong>Data Conclusão:</strong> ${new Date(demandaNormalizada.dataConclusao).toLocaleDateString('pt-BR')}</p>` : ''}
+                    ${demandaNormalizada.isRotina ? `<p><strong>Tipo:</strong> <span style="color: #9b59b6;">Tarefa de Rotina</span></p>` : ''}
+                </div>
+            </div>
+            
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 15px;">
+                <h4 style="margin-top: 0; color: #2c3e50;">📝 Descrição da Demanda</h4>
+                <p style="white-space: pre-wrap; line-height: 1.5;">${demandaNormalizada.descricao || 'Nenhuma descrição informada.'}</p>
+            </div>
+            
+            ${diasSemanaInfo}
+            ${tempoInfo}
+            ${atribuidosInfo}
+            
+            ${comentariosUsuariosHTML}
+            
+            ${demandaNormalizada.comentarios ? `
+                <div style="background: #e8f5e8; padding: 15px; border-radius: 5px; margin-bottom: 15px;">
+                    <h4 style="margin-top: 0; color: #27ae60;">💬 Comentários do Funcionário</h4>
+                    <p style="white-space: pre-wrap; line-height: 1.5;">${demandaNormalizada.comentarios}</p>
+                </div>
+            ` : ''}
+            
+            ${demandaNormalizada.comentarioGestor ? `
+                <div style="background: #fff3cd; padding: 15px; border-radius: 5px; margin-bottom: 15px;">
+                    <h4 style="margin-top: 0; color: #856404;">👔 Comentário do Gestor</h4>
+                    <p style="white-space: pre-wrap; line-height: 1.5;">${demandaNormalizada.comentarioGestor}</p>
+                </div>
+            ` : ''}
+            
+            ${demandaNormalizada.comentarioReprovacaoAtribuicao ? `
+                <div style="background: #f8d7da; padding: 15px; border-radius: 5px; margin-bottom: 15px;">
+                    <h4 style="margin-top: 0; color: #721c24;">❌ Motivo da Reprovação</h4>
+                    <p style="white-space: pre-wrap; line-height: 1.5;">${demandaNormalizada.comentarioReprovacaoAtribuicao}</p>
+                </div>
+            ` : ''}
+            
+            <div style="background: #e9ecef; padding: 10px; border-radius: 5px; text-align: center;">
+                <small><strong>TAG:</strong> ${demandaNormalizada.tag}</small>
+            </div>
+            
+            ${botaoComentario}
+        </div>
+    `;
+    
+    showModal('detailModal', 'Detalhes da Demanda', content);
+}
 </script>
 
 </body>
