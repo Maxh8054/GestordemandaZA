@@ -4632,12 +4632,13 @@ function getDemandasDosColaboradores() {
             document.getElementById('editarDemandaForm').reset();
             document.getElementById('editarDiasSemanaGroup').style.display = 'none';
             document.getElementById('editarCustomCategoryInput').style.display = 'none';
-            selectedUsersEditar = [];
-            demandaEdicaoAtual = null;
+            // Limpar variáveis globais
+            window.demandaEdicaoAtual = null;
+            window.selectedUsersEditar = [];
         }
     }
 }
-    // Ação rápida
+// Ação rápida
     function quickAction() {
         switchTab('nova');
     }
@@ -7519,9 +7520,58 @@ let selectedUsersEditar = [];
 // Adicione estas funções após as funções existentes
 
 // Função para abrir modal de edição
+// Função para abrir modal de edição
 function abrirModalEditarDemanda(demandaId) {
-    // ... código existente ...
+    // Buscar a demanda pelo ID
+    const demanda = todasDemandas.find(d => d.id === demandaId);
+    if (!demanda) {
+        showNotification('error', 'Erro', 'Demanda não encontrada.');
+        return;
+    }
     
+    // Verificar se o usuário é o criador
+    if (usuarioLogado.id !== demanda.funcionarioId) {
+        showNotification('error', 'Acesso Negado', 'Apenas o criador da demanda pode editá-la.');
+        return;
+    }
+    
+    // Verificar se a demanda pode ser editada (não resolvida, não em análise, não concluída)
+    if (demanda.status === 'finalizado_pendente_aprovacao' || 
+        demanda.status === 'aprovada' || 
+        demanda.status === 'reprovada' || 
+        demanda.status === 'reprovada_pelo_atribuido') {
+        showNotification('error', 'Demanda Não Editável', 'Esta demanda não pode ser editada porque já foi resolvida, está em análise ou foi concluída.');
+        return;
+    }
+    
+    // Armazenar a demanda atual para edição
+    window.demandaEdicaoAtual = demanda;
+    
+    // Preencher o formulário com os dados atuais
+    document.getElementById('editarNomeDemanda').value = demanda.nomeDemanda || '';
+    document.getElementById('editarCategoria').value = demanda.categoria || '';
+    document.getElementById('editarPrioridade').value = demanda.prioridade || '';
+    document.getElementById('editarComplexidade').value = demanda.complexidade || '';
+    document.getElementById('editarLocal').value = demanda.local || '';
+    document.getElementById('editarDescricao').value = demanda.descricao || '';
+    document.getElementById('editarDataLimite').value = demanda.dataLimite || '';
+    document.getElementById('editarRotina').checked = demanda.isRotina || false;
+    
+    // Preencher atribuídos
+    window.selectedUsersEditar = demanda.atribuidos || [];
+    updateSelectedUsersEditar();
+    
+    // Preencher dias da semana se for rotina
+    if (demanda.isRotina && demanda.diasSemana) {
+        document.querySelectorAll('input[name="editarDiaSemana"]').forEach(checkbox => {
+            checkbox.checked = demanda.diasSemana.includes(parseInt(checkbox.value));
+        });
+        document.getElementById('editarDiasSemanaGroup').style.display = 'block';
+    } else {
+        document.getElementById('editarDiasSemanaGroup').style.display = 'none';
+    }
+    
+    // Abrir o modal
     showModal('editarDemandaModal', `Editar Demanda: ${demanda.nomeDemanda}`);
     
     // Inicializar o multi-select após o modal abrir
@@ -7537,17 +7587,19 @@ function toggleMultiSelectEditar(id) {
 
 function updateSelectedUsersEditar() {
     const display = document.getElementById('editarAtribuidosDisplay');
-    if (selectedUsersEditar.length === 0) {
+    const selectedUsers = window.selectedUsersEditar || [];
+    
+    if (selectedUsers.length === 0) {
         display.innerHTML = '<span style="color: #999;">Clique para selecionar funcionários...</span>';
     } else {
-        display.innerHTML = selectedUsersEditar.map(user => 
+        display.innerHTML = selectedUsers.map(user => 
             `<span class="selected-item">${user.nome} <i class="fas fa-times" onclick="removeUserEditar(${user.id})"></i></span>`
         ).join('');
     }
 }
 
 function removeUserEditar(userId) {
-    selectedUsersEditar = selectedUsersEditar.filter(user => user.id !== userId);
+    window.selectedUsersEditar = (window.selectedUsersEditar || []).filter(user => user.id !== userId);
     updateSelectedUsersEditar();
     
     // Atualizar o checkbox
@@ -7615,8 +7667,13 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Função para salvar a demanda editada
+// Função para salvar a demanda editada
 async function salvarDemandaEditada() {
-    if (!demandaEdicaoAtual) return;
+    const demandaEdicaoAtual = window.demandaEdicaoAtual;
+    if (!demandaEdicaoAtual) {
+        showNotification('error', 'Erro', 'Nenhuma demanda selecionada para edição.');
+        return;
+    }
     
     const nomeDemanda = document.getElementById('editarNomeDemanda').value;
     const categoria = document.getElementById('editarCategoria').value;
@@ -7646,7 +7703,7 @@ async function salvarDemandaEditada() {
         local,
         isRotina,
         diasSemana,
-        atribuidos: selectedUsersEditar,
+        atribuidos: window.selectedUsersEditar,
         dataAtualizacao: new Date().toISOString()
     };
     
@@ -7660,7 +7717,7 @@ async function salvarDemandaEditada() {
         
         // Notificar atribuídos se houver mudança
         const atribuidosAtuais = demandaEdicaoAtual.atribuidos || [];
-        const novosAtribuidos = selectedUsersEditar.filter(novo => 
+        const novosAtribuidos = (window.selectedUsersEditar || []).filter(novo => 
             !atribuidosAtuais.some(atual => atual.id === novo.id)
         );
         
@@ -7680,10 +7737,10 @@ async function salvarDemandaEditada() {
         }
     }
     
-    demandaEdicaoAtual = null;
-    selectedUsersEditar = [];
+    // Limpar variáveis globais
+    window.demandaEdicaoAtual = null;
+    window.selectedUsersEditar = [];
 }
-
 // Inicializar o multi-select de edição quando o modal abrir
 function inicializarMultiSelectEditar() {
     const dropdown = document.getElementById('editarAtribuidosDropdown');
