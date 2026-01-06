@@ -240,7 +240,9 @@ function inserirUsuariosPadrao() {
         { id: 14, nome: 'Emerson Luiz Alexandre', email: 'emerson-a@zaminebrasil.com', nivel: 'Senior', pontos: 460, conquistas: '["star", "fire", "gold"]', senha: 'admin123', role: 'gestor' }, // Novo gestor adicionado
         { id: 99, nome: 'Gestor do Sistema', email: 'wallysson-s@zaminebrasil.com', nivel: 'Administrador', pontos: 999, conquistas: '["star", "fire", "gold", "crown"]', senha: 'admin123', role: 'gestor' },
         { id: 100, nome: 'Wallysson Diego Santiago Santos', email: 'wallysson-s@zaminebrasil.com', nivel: 'Coordenador', pontos: 999, conquistas: '["star", "fire", "gold", "crown"]', senha: 'admin123', role: 'gestor' },
-        { id: 101, nome: 'Julio Cesar Sanches', email: 'julio-s@zaminebrasil.com', nivel: 'Gerente', pontos: 999, conquistas: '["star", "fire", "gold", "crown"]', senha: 'admin123', role: 'gestor' }
+        { id: 101, nome: 'Julio Cesar Sanches', email: 'julio-s@zaminebrasil.com', nivel: 'Gerente', pontos: 999, conquistas: '["star", "fire", "gold", "crown"]', senha: 'admin123', role: 'gestor' },
+        { id: 15, nome: 'Warlen Eduardo Pereira Silva', email: 'warlen-s@zaminebrasil.com', nivel: 'Pleno', pontos: 350, conquistas: '["star", "silver"]', senha: '123456', role: 'funcionario' },
+    { id: 16, nome: 'Cicero de Sousa Costa', email: 'cicero-c@zaminebrasil.com', nivel: 'Senior', pontos: 420, conquistas: '["star", "fire", "gold"]', senha: '123456', role: 'funcionario' },
     ];
 
     let inseridos = 0;
