@@ -1942,6 +1942,70 @@ button.info:active::before {
     width: 300px;
     height: 300px;
 }
+/* Indicador de comentários */
+.comentario-indicator {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: var(--info-color);
+    color: white;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    z-index: 10;
+}
+
+.comentario-indicator:hover {
+    transform: scale(1.1);
+    background: #2980b9;
+}
+
+.comentario-indicator .badge-count {
+    background: var(--warning-color);
+    color: white;
+    border-radius: 50%;
+    width: 12px;
+    height: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    position: absolute;
+    top: -2px;
+    right: -2px;
+}
+
+/* Badge de comentários na lista */
+.demanda-item.has-comentarios {
+    border-left: 5px solid var(--info-color);
+    position: relative;
+}
+
+.demanda-item.has-comentarios::after {
+    content: '💬';
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    font-size: 16px;
+    opacity: 0.7;
+}
+
+/* Contador de comentários no detalhe */
+.comentarios-count {
+    background: var(--info-color);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: bold;
+    margin-left: 10px;
+}
     </style>
 </head>
 <body>
@@ -4133,34 +4197,50 @@ function getDemandasDosColaboradores() {
 }
 
     // Obter demandas filtradas
-    function getDemandasFiltradas() {
-        let demandasBase = getDemandasParaUsuarioLogado();
+   function getDemandasFiltradas() {
+    let demandasBase = getDemandasParaUsuarioLogado();
 
-        if (filtroFuncionarioAtual !== 'todos') {
-            demandasBase = demandasBase.filter(d => d.funcionarioId == filtroFuncionarioAtual);
-        }
-        
-        const periodo = document.getElementById('filtroPeriodo')?.value;
-        if (periodo && periodo !== 'all') {
-            const diasAtras = parseInt(periodo);
-            const cutoffDate = new Date();
-            cutoffDate.setDate(cutoffDate.getDate() - diasAtras);
-            demandasBase = demandasBase.filter(d => new Date(d.dataCriacao) >= cutoffDate);
-        }
-        
-        const categoria = document.getElementById('filtroCategoria')?.value;
-        if (categoria && categoria !== 'todas') {
-            demandasBase = demandasBase.filter(d => d.categoria === categoria);
-        }
-        
-        const prioridade = document.getElementById('filtroPrioridade')?.value;
-        if (prioridade && prioridade !== 'todas') {
-            demandasBase = demandasBase.filter(d => d.prioridade === prioridade);
-        }
-        
-        return demandasBase;
+    if (filtroFuncionarioAtual !== 'todos') {
+        demandasBase = demandasBase.filter(d => d.funcionarioId == filtroFuncionarioAtual);
     }
-
+    
+    const periodo = document.getElementById('filtroPeriodo')?.value;
+    if (periodo && periodo !== 'all') {
+        const diasAtras = parseInt(periodo);
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - diasAtras);
+        demandasBase = demandasBase.filter(d => new Date(d.dataCriacao) >= cutoffDate);
+    }
+    
+    const categoria = document.getElementById('filtroCategoria')?.value;
+    if (categoria && categoria !== 'todas') {
+        demandasBase = demandasBase.filter(d => d.categoria === categoria);
+    }
+    
+    const prioridade = document.getElementById('filtroPrioridade')?.value;
+    if (prioridade && prioridade !== 'todas') {
+        demandasBase = demandasBase.filter(d => d.prioridade === prioridade);
+    }
+    
+    // Aplicar filtro de comentários
+    if (window.filtroComentariosAtual) {
+        if (window.filtroComentariosAtual === 'com-comentarios') {
+            demandasBase = demandasBase.filter(d => 
+                d.comentariosUsuarios && 
+                Array.isArray(d.comentariosUsuarios) && 
+                d.comentariosUsuarios.length > 0
+            );
+        } else if (window.filtroComentariosAtual === 'sem-comentarios') {
+            demandasBase = demandasBase.filter(d => 
+                !d.comentariosUsuarios || 
+                !Array.isArray(d.comentariosUsuarios) || 
+                d.comentariosUsuarios.length === 0
+            );
+        }
+    }
+    
+    return demandasBase;
+}
     // Atualizar dashboard
     function atualizarDashboard() {
         const demandasFiltradas = getDemandasFiltradas();
@@ -5098,242 +5178,267 @@ function renderizarPendentesColaboradores() {
     }
 
     // Criar elemento de demanda
-    function criarElementoDemanda(demanda, isAtrasado = false) {
-        // Usa a função de normalizar para garantir que os dados estejam corretos
-        demanda = normalizarDadosDemanda(demanda);
+   // Substitua a função criarElementoDemanda existente por esta:
+function criarElementoDemanda(demanda, isAtrasado = false) {
+    // Usa a função de normalizar para garantir que os dados estejam corretos
+    demanda = normalizarDadosDemanda(demanda);
 
-        const div = document.createElement('div');
-        
-        const status = demanda.status || 'pendente';
-        const isRotina = demanda.isRotina || false;
-        const dataLimite = demanda.dataLimite;
-        const statusClass = isAtrasado ? 'atrasado' : status;
-        
-        div.className = `demanda-item ${statusClass} ${isRotina ? 'rotina' : ''}`;
-        
-        let statusIcon = '⏳';
-        switch (status) {
-            case 'aprovada':
-                statusIcon = '✅';
-                break;
-            case 'reprovada':
-            case 'reprovada_pelo_atribuido':
-                statusIcon = '❌';
-                break;
-            case 'finalizado_pendente_aprovacao':
-                statusIcon = '📋';
-                break;
-            case 'atribuida_pendente_aceitacao':
-                statusIcon = '📋';
-                break;
-        }
-        
-        const dataLimiteFormatada = dataLimite ? new Date(dataLimite).toLocaleDateString('pt-BR') : '';
-        const rotinaInfo = isRotina ? `<small><i class="fas fa-redo"></i> Tarefa de rotina</small>` : '';
-        
-        let infoAdicional = '';
-        if (status === 'finalizado_pendente_aprovacao') {
-            infoAdicional = `<br><small><strong>Comentários do Funcionário:</strong> ${demanda.comentarios || ''}</small>`;
-        }
-        
-        if (status === 'reprovada_pelo_atribuido') {
-            infoAdicional = `<br><small><strong>Motivo da Reprovação:</strong> ${demanda.comentarioReprovacaoAtribuicao || ''}</small>`;
-        }
-        
-        if (status === 'reprovada') {
-            infoAdicional = `<br><small><strong>Motivo da Reprovação:</strong> ${demanda.comentarioGestor || ''}</small>`;
-        }
-        
-        let diasFormatados = '';
-        // A verificação agora é segura, pois normalizarDadosDemanda garante que é um array
-        if (demanda.isRotina && Array.isArray(demanda.diasSemana) && demanda.diasSemana.length > 0) {
-            diasFormatados = demanda.diasSemana.map(dia => ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'][dia]).join(', ');
-        }
-        
-        let tempoElement = '';
-        if (status === 'aprovada' && demanda.dataConclusao) {
-            const performanceText = calcularDesempenhoTempo(demanda.dataCriacao, demanda.dataConclusao, dataLimite);
-            const performanceClass = performanceText.includes('antes') ? 'early' : 'late';
-            tempoElement = `<div class="time-performance ${performanceClass}">${performanceText}</div>`;
-        } else if (status !== 'finalizado_pendente_aprovacao') {
-            // Não mostrar timer para demandas em análise
-            const tempoRestante = dataLimite ? calcularTempoRestante(dataLimite) : '';
-            tempoElement = `<div class="time-remaining">${isAtrasado ? 'ATRASADA HÁ ' : 'TEMPO RESTANTE: '}${tempoRestante}</div>`;
-        }
-        
-        const prioridade = demanda.prioridade || '';
-        const prioridadeBadge = prioridade ? 
-            `<span class="demanda-priority priority-${prioridade.toLowerCase()}">${prioridade}</span>` : '';
-        
-        const podeAprovar = usuarioLogado && usuarioLogado.role === 'gestor';
-        const eDono = usuarioLogado && usuarioLogado.id === demanda.funcionarioId;
-        // A verificação agora é segura, pois normalizarDadosDemanda garante que é um array
-        const eAtribuido = usuarioLogado && Array.isArray(demanda.atribuidos) && demanda.atribuidos.some(a => a.id === usuarioLogado.id);
-        
-        let atribuidosInfo = '';
-        // A verificação agora é segura, pois normalizarDadosDemanda garante que é um array
-        if (Array.isArray(demanda.atribuidos) && demanda.atribuidos.length > 0) {
-            atribuidosInfo = `<small><strong>Atribuída a:</strong> ${demanda.atribuidos.map(a => a.nome).join(', ')}</small>`;
-        }
-        
-        div.innerHTML = `
-            ${prioridadeBadge}
-            <div class="demanda-info">
-                <strong>${demanda.nomeFuncionario} - ${demanda.nomeDemanda || demanda.descricao}</strong>
-                <small>Categoria: ${demanda.categoria} | ${statusIcon} ${demanda.status.replace(/_/g, ' ')} | Local: ${demanda.local || 'N/A'} | Data Limite: ${dataLimiteFormatada}</small>
-                ${atribuidosInfo}
-                <small><strong>TAG:</strong> ${demanda.tag || ''}</small>
-                ${demanda.comentarioGestor ? `<br><small><strong>Comentário do Gestor:</strong> ${demanda.comentarioGestor || ''}</small>` : ''}
-                ${infoAdicional}
-                ${rotinaInfo}
-                ${diasFormatados ? `<small><strong>Dias da semana:</strong> ${diasFormatados}</small>` : ''}
-                ${tempoElement}
-            </div>
-            <div class="acoes-demandas">
-                ${(eDono || eAtribuido) && (demanda.status === 'pendente' || demanda.status === 'reprovada') ? `
-                    <button class="success" onclick="abrirModalResolucao(${demanda.id})" title="Resolver Demanda">
-                        <i class="fas fa-tools"></i>
-                    </button>
-                ` : ''}
-                ${podeAprovar && (demanda.status === 'finalizado_pendente_aprovacao') ? `
-                    <button class="success" onclick="aprovarDemanda(${demanda.id}, '${demanda.nomeFuncionario}')" title="Aprovar">
-                        <i class="fas fa-check"></i>
-                    </button>
-                    <button class="danger" onclick="abrirModalReprovar(${demanda.id})" title="Reprovar">
-                        <i class="fas fa-times"></i>
-                    </button>
-                ` : ''}
-                <button class="secondary" onclick="verDetalhes(${demanda.id})" title="Ver Detalhes">
-                    <i class="fas fa-eye"></i>
-                </button>
-                ${podeAprovar ? `
-                    <button class="danger" onclick="apagarDemanda(${demanda.id})" title="Apagar">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                ` : ''}
-            </div>
-        `;
-        
-        return div;
+    const div = document.createElement('div');
+    
+    const status = demanda.status || 'pendente';
+    const isRotina = demanda.isRotina || false;
+    const dataLimite = demanda.dataLimite;
+    const statusClass = isAtrasado ? 'atrasado' : status;
+    
+    // Verificar se há comentários dos usuários
+    const temComentarios = demanda.comentariosUsuarios && Array.isArray(demanda.comentariosUsuarios) && demanda.comentariosUsuarios.length > 0;
+    const totalComentarios = temComentarios ? demanda.comentariosUsuarios.length : 0;
+    
+    div.className = `demanda-item ${statusClass} ${isRotina ? 'rotina' : ''} ${temComentarios ? 'has-comentarios' : ''}`;
+    
+    let statusIcon = '⏳';
+    switch (status) {
+        case 'aprovada':
+            statusIcon = '✅';
+            break;
+        case 'reprovada':
+        case 'reprovada_pelo_atribuido':
+            statusIcon = '❌';
+            break;
+        case 'finalizado_pendente_aprovacao':
+            statusIcon = '📋';
+            break;
+        case 'atribuida_pendente_aceitacao':
+            statusIcon = '📋';
+            break;
     }
-
-    // Criar elemento de demanda atrasada (com checkbox para seleção)
-    function criarElementoDemandaAtrasada(demanda, isAtrasado = false) {
-        // Usa a função de normalizar para garantir que os dados estejam corretos
-        demanda = normalizarDadosDemanda(demanda);
-
-        const div = document.createElement('div');
-        
-        const status = demanda.status || 'pendente';
-        const isRotina = demanda.isRotina || false;
-        const dataLimite = demanda.dataLimite;
-        const statusClass = isAtrasado ? 'atrasado' : status;
-        
-        div.className = `demanda-item ${statusClass} ${isRotina ? 'rotina' : ''}`;
-        
-        let statusIcon = '⏳';
-        switch (status) {
-            case 'aprovada':
-                statusIcon = '✅';
-                break;
-            case 'reprovada':
-            case 'reprovada_pelo_atribuido':
-                statusIcon = '❌';
-                break;
-            case 'finalizado_pendente_aprovacao':
-                statusIcon = '📋';
-                break;
-            case 'atribuida_pendente_aceitacao':
-                statusIcon = '📋';
-                break;
-        }
-        
-        const dataLimiteFormatada = dataLimite ? new Date(dataLimite).toLocaleDateString('pt-BR') : '';
-        const rotinaInfo = isRotina ? `<small><i class="fas fa-redo"></i> Tarefa de rotina</small>` : '';
-        
-        let infoAdicional = '';
-        if (status === 'finalizado_pendente_aprovacao') {
-            infoAdicional = `<br><small><strong>Comentários do Funcionário:</strong> ${demanda.comentarios || ''}</small>`;
-        }
-        
-        if (status === 'reprovada_pelo_atribuido') {
-            infoAdicional = `<br><small><strong>Motivo da Reprovação:</strong> ${demanda.comentarioReprovacaoAtribuicao || ''}</small>`;
-        }
-        
-        if (status === 'reprovada') {
-            infoAdicional = `<br><small><strong>Motivo da Reprovação:</strong> ${demanda.comentarioGestor || ''}</small>`;
-        }
-        
-        let diasFormatados = '';
-        // A verificação agora é segura, pois normalizarDadosDemanda garante que é um array
-        if (demanda.isRotina && Array.isArray(demanda.diasSemana) && demanda.diasSemana.length > 0) {
-            diasFormatados = demanda.diasSemana.map(dia => ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'][dia]).join(', ');
-        }
-        
+    
+    const dataLimiteFormatada = dataLimite ? new Date(dataLimite).toLocaleDateString('pt-BR') : '';
+    const rotinaInfo = isRotina ? `<small><i class="fas fa-redo"></i> Tarefa de rotina</small>` : '';
+    
+    let infoAdicional = '';
+    if (status === 'finalizado_pendente_aprovacao') {
+        infoAdicional = `<br><small><strong>Comentários do Funcionário:</strong> ${demanda.comentarios || ''}</small>`;
+    }
+    
+    if (status === 'reprovada_pelo_atribuido') {
+        infoAdicional = `<br><small><strong>Motivo da Reprovação:</strong> ${demanda.comentarioReprovacaoAtribuicao || ''}</small>`;
+    }
+    
+    if (status === 'reprovada') {
+        infoAdicional = `<br><small><strong>Motivo da Reprovação:</strong> ${demanda.comentarioGestor || ''}</small>`;
+    }
+    
+    let diasFormatados = '';
+    if (demanda.isRotina && Array.isArray(demanda.diasSemana) && demanda.diasSemana.length > 0) {
+        diasFormatados = demanda.diasSemana.map(dia => ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'][dia]).join(', ');
+    }
+    
+    let tempoElement = '';
+    if (status === 'aprovada' && demanda.dataConclusao) {
+        const performanceText = calcularDesempenhoTempo(demanda.dataCriacao, demanda.dataConclusao, dataLimite);
+        const performanceClass = performanceText.includes('antes') ? 'early' : 'late';
+        tempoElement = `<div class="time-performance ${performanceClass}">${performanceText}</div>`;
+    } else if (status !== 'finalizado_pendente_aprovacao') {
         const tempoRestante = dataLimite ? calcularTempoRestante(dataLimite) : '';
-        
-        const prioridade = demanda.prioridade || '';
-        const prioridadeBadge = prioridade ? 
-            `<span class="demanda-priority priority-${prioridade.toLowerCase()}">${prioridade}</span>` : '';
-        
-        const podeAprovar = usuarioLogado && usuarioLogado.role === 'gestor';
-        const eDono = usuarioLogado && usuarioLogado.id === demanda.funcionarioId;
-        // A verificação agora é segura, pois normalizarDadosDemanda garante que é um array
-        const eAtribuido = usuarioLogado && Array.isArray(demanda.atribuidos) && demanda.atribuidos.some(a => a.id === usuarioLogado.id);
-        
-        let atribuidosInfo = '';
-        // A verificação agora é segura, pois normalizarDadosDemanda garante que é um array
-        if (Array.isArray(demanda.atribuidos) && demanda.atribuidos.length > 0) {
-            atribuidosInfo = `<small><strong>Atribuída a:</strong> ${demanda.atribuidos.map(a => a.nome).join(', ')}</small>`;
-        }
-        
-        // Verificar se esta demanda está selecionada
-        const isSelected = selectedOverdueDemands.has(demanda.id);
-        
-        div.innerHTML = `
-            ${prioridadeBadge}
-            <input type="checkbox" class="demanda-checkbox" id="checkbox_${demanda.id}" 
-                ${isSelected ? 'checked' : ''} 
-                onchange="toggleOverdueSelection(${demanda.id})">
-            <div class="demanda-info">
-                <strong>${demanda.nomeFuncionario} - ${demanda.nomeDemanda || demanda.descricao}</strong>
-                <small>Categoria: ${demanda.categoria} | ${statusIcon} ${demanda.status.replace(/_/g, ' ')} | Local: ${demanda.local || 'N/A'} | Data Limite: ${dataLimiteFormatada}</small>
-                ${atribuidosInfo}
-                <small><strong>TAG:</strong> ${demanda.tag || ''}</small>
-                ${demanda.comentarioGestor ? `<br><small><strong>Comentário do Gestor:</strong> ${demanda.comentarioGestor || ''}</small>` : ''}
-                ${infoAdicional}
-                ${rotinaInfo}
-                ${diasFormatados ? `<small><strong>Dias da semana:</strong> ${diasFormatados}</small>` : ''}
-                <div class="time-remaining">ATRASADA HÁ ${tempoRestante}</div>
-            </div>
-            <div class="acoes-demandas">
-                ${(eDono || eAtribuido) && (demanda.status === 'pendente' || demanda.status === 'reprovada') ? `
-                    <button class="success" onclick="abrirModalResolucao(${demanda.id})" title="Resolver Demanda">
-                        <i class="fas fa-tools"></i>
-                    </button>
-                ` : ''}
-                ${podeAprovar && (demanda.status === 'finalizado_pendente_aprovacao') ? `
-                    <button class="success" onclick="aprovarDemanda(${demanda.id}, '${demanda.nomeFuncionario}')" title="Aprovar">
-                        <i class="fas fa-check"></i>
-                    </button>
-                    <button class="danger" onclick="abrirModalReprovar(${demanda.id})" title="Reprovar">
-                        <i class="fas fa-times"></i>
-                    </button>
-                ` : ''}
-                <button class="secondary" onclick="verDetalhes(${demanda.id})" title="Ver Detalhes">
-                    <i class="fas fa-eye"></i>
-                </button>
-                ${podeAprovar ? `
-                    <button class="danger" onclick="apagarDemanda(${demanda.id})" title="Apagar">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                ` : ''}
+        tempoElement = `<div class="time-remaining">${isAtrasado ? 'ATRASADA HÁ ' : 'TEMPO RESTANTE: '}${tempoRestante}</div>`;
+    }
+    
+    const prioridade = demanda.prioridade || '';
+    const prioridadeBadge = prioridade ? 
+        `<span class="demanda-priority priority-${prioridade.toLowerCase()}">${prioridade}</span>` : '';
+    
+    const podeAprovar = usuarioLogado && usuarioLogado.role === 'gestor';
+    const eDono = usuarioLogado && usuarioLogado.id === demanda.funcionarioId;
+    const eAtribuido = usuarioLogado && Array.isArray(demanda.atribuidos) && demanda.atribuidos.some(a => a.id === usuarioLogado.id);
+    
+    let atribuidosInfo = '';
+    if (Array.isArray(demanda.atribuidos) && demanda.atribuidos.length > 0) {
+        atribuidosInfo = `<small><strong>Atribuída a:</strong> ${demanda.atribuidos.map(a => a.nome).join(', ')}</small>`;
+    }
+    
+    // Indicador de comentários
+    let comentariosIndicator = '';
+    if (temComentarios) {
+        comentariosIndicator = `
+            <div class="comentario-indicator" onclick="verDetalhes(${demanda.id})" title="Ver ${totalComentarios} comentário(s)">
+                <i class="fas fa-comment"></i>
+                ${totalComentarios > 1 ? `<span class="badge-count">${totalComentarios}</span>` : ''}
             </div>
         `;
-        
-        return div;
     }
+    
+    div.innerHTML = `
+        ${prioridadeBadge}
+        ${comentariosIndicator}
+        <div class="demanda-info">
+            <strong>${demanda.nomeFuncionario} - ${demanda.nomeDemanda || demanda.descricao}</strong>
+            <small>Categoria: ${demanda.categoria} | ${statusIcon} ${demanda.status.replace(/_/g, ' ')} | Local: ${demanda.local || 'N/A'} | Data Limite: ${dataLimiteFormatada}</small>
+            ${atribuidosInfo}
+            <small><strong>TAG:</strong> ${demanda.tag || ''}</small>
+            ${demanda.comentarioGestor ? `<br><small><strong>Comentário do Gestor:</strong> ${demanda.comentarioGestor || ''}</small>` : ''}
+            ${infoAdicional}
+            ${rotinaInfo}
+            ${diasFormatados ? `<small><strong>Dias da semana:</strong> ${diasFormatados}</small>` : ''}
+            ${tempoElement}
+        </div>
+        <div class="acoes-demandas">
+            ${(eDono || eAtribuido) && (demanda.status === 'pendente' || demanda.status === 'reprovada') ? `
+                <button class="success" onclick="abrirModalResolucao(${demanda.id})" title="Resolver Demanda">
+                    <i class="fas fa-tools"></i>
+                </button>
+            ` : ''}
+            ${podeAprovar && (demanda.status === 'finalizado_pendente_aprovacao') ? `
+                <button class="success" onclick="aprovarDemanda(${demanda.id}, '${demanda.nomeFuncionario}')" title="Aprovar">
+                    <i class="fas fa-check"></i>
+                </button>
+                <button class="danger" onclick="abrirModalReprovar(${demanda.id})" title="Reprovar">
+                    <i class="fas fa-times"></i>
+                </button>
+            ` : ''}
+            <button class="secondary" onclick="verDetalhes(${demanda.id})" title="Ver Detalhes">
+                <i class="fas fa-eye"></i>
+            </button>
+            ${podeAprovar ? `
+                <button class="danger" onclick="apagarDemanda(${demanda.id})" title="Apagar">
+                    <i class="fas fa-trash"></i>
+                </button>
+            ` : ''}
+        </div>
+    `;
+    
+    return div;
+}
+    // Criar elemento de demanda atrasada (com checkbox para seleção)
+    // Substitua a função criarElementoDemandaAtrasada existente por esta:
+function criarElementoDemandaAtrasada(demanda, isAtrasado = false) {
+    // Usa a função de normalizar para garantir que os dados estejam corretos
+    demanda = normalizarDadosDemanda(demanda);
 
+    const div = document.createElement('div');
+    
+    const status = demanda.status || 'pendente';
+    const isRotina = demanda.isRotina || false;
+    const dataLimite = demanda.dataLimite;
+    const statusClass = isAtrasado ? 'atrasado' : status;
+    
+    // Verificar se há comentários dos usuários
+    const temComentarios = demanda.comentariosUsuarios && Array.isArray(demanda.comentariosUsuarios) && demanda.comentariosUsuarios.length > 0;
+    const totalComentarios = temComentarios ? demanda.comentariosUsuarios.length : 0;
+    
+    div.className = `demanda-item ${statusClass} ${isRotina ? 'rotina' : ''} ${temComentarios ? 'has-comentarios' : ''}`;
+    
+    let statusIcon = '⏳';
+    switch (status) {
+        case 'aprovada':
+            statusIcon = '✅';
+            break;
+        case 'reprovada':
+        case 'reprovada_pelo_atribuido':
+            statusIcon = '❌';
+            break;
+        case 'finalizado_pendente_aprovacao':
+            statusIcon = '📋';
+            break;
+        case 'atribuida_pendente_aceitacao':
+            statusIcon = '📋';
+            break;
+    }
+    
+    const dataLimiteFormatada = dataLimite ? new Date(dataLimite).toLocaleDateString('pt-BR') : '';
+    const rotinaInfo = isRotina ? `<small><i class="fas fa-redo"></i> Tarefa de rotina</small>` : '';
+    
+    let infoAdicional = '';
+    if (status === 'finalizado_pendente_aprovacao') {
+        infoAdicional = `<br><small><strong>Comentários do Funcionário:</strong> ${demanda.comentarios || ''}</small>`;
+    }
+    
+    if (status === 'reprovada_pelo_atribuido') {
+        infoAdicional = `<br><small><strong>Motivo da Reprovação:</strong> ${demanda.comentarioReprovacaoAtribuicao || ''}</small>`;
+    }
+    
+    if (status === 'reprovada') {
+        infoAdicional = `<br><small><strong>Motivo da Reprovação:</strong> ${demanda.comentarioGestor || ''}</small>`;
+    }
+    
+    let diasFormatados = '';
+    if (demanda.isRotina && Array.isArray(demanda.diasSemana) && demanda.diasSemana.length > 0) {
+        diasFormatados = demanda.diasSemana.map(dia => ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'][dia]).join(', ');
+    }
+    
+    const tempoRestante = dataLimite ? calcularTempoRestante(dataLimite) : '';
+    
+    const prioridade = demanda.prioridade || '';
+    const prioridadeBadge = prioridade ? 
+        `<span class="demanda-priority priority-${prioridade.toLowerCase()}">${prioridade}</span>` : '';
+    
+    const podeAprovar = usuarioLogado && usuarioLogado.role === 'gestor';
+    const eDono = usuarioLogado && usuarioLogado.id === demanda.funcionarioId;
+    const eAtribuido = usuarioLogado && Array.isArray(demanda.atribuidos) && demanda.atribuidos.some(a => a.id === usuarioLogado.id);
+    
+    let atribuidosInfo = '';
+    if (Array.isArray(demanda.atribuidos) && demanda.atribuidos.length > 0) {
+        atribuidosInfo = `<small><strong>Atribuída a:</strong> ${demanda.atribuidos.map(a => a.nome).join(', ')}</small>`;
+    }
+    
+    // Verificar se esta demanda está selecionada
+    const isSelected = selectedOverdueDemands.has(demanda.id);
+    
+    // Indicador de comentários
+    let comentariosIndicator = '';
+    if (temComentarios) {
+        comentariosIndicator = `
+            <div class="comentario-indicator" onclick="verDetalhes(${demanda.id})" title="Ver ${totalComentarios} comentário(s)">
+                <i class="fas fa-comment"></i>
+                ${totalComentarios > 1 ? `<span class="badge-count">${totalComentarios}</span>` : ''}
+            </div>
+        `;
+    }
+    
+    div.innerHTML = `
+        ${prioridadeBadge}
+        ${comentariosIndicator}
+        <input type="checkbox" class="demanda-checkbox" id="checkbox_${demanda.id}" 
+            ${isSelected ? 'checked' : ''} 
+            onchange="toggleOverdueSelection(${demanda.id})">
+        <div class="demanda-info">
+            <strong>${demanda.nomeFuncionario} - ${demanda.nomeDemanda || demanda.descricao}</strong>
+            <small>Categoria: ${demanda.categoria} | ${statusIcon} ${demanda.status.replace(/_/g, ' ')} | Local: ${demanda.local || 'N/A'} | Data Limite: ${dataLimiteFormatada}</small>
+            ${atribuidosInfo}
+            <small><strong>TAG:</strong> ${demanda.tag || ''}</small>
+            ${demanda.comentarioGestor ? `<br><small><strong>Comentário do Gestor:</strong> ${demanda.comentarioGestor || ''}</small>` : ''}
+            ${infoAdicional}
+            ${rotinaInfo}
+            ${diasFormatados ? `<small><strong>Dias da semana:</strong> ${diasFormatados}</small>` : ''}
+            <div class="time-remaining">ATRASADA HÁ ${tempoRestante}</div>
+        </div>
+        <div class="acoes-demandas">
+            ${(eDono || eAtribuido) && (demanda.status === 'pendente' || demanda.status === 'reprovada') ? `
+                <button class="success" onclick="abrirModalResolucao(${demanda.id})" title="Resolver Demanda">
+                    <i class="fas fa-tools"></i>
+                </button>
+            ` : ''}
+            ${podeAprovar && (demanda.status === 'finalizado_pendente_aprovacao') ? `
+                <button class="success" onclick="aprovarDemanda(${demanda.id}, '${demanda.nomeFuncionario}')" title="Aprovar">
+                    <i class="fas fa-check"></i>
+                </button>
+                <button class="danger" onclick="abrirModalReprovar(${demanda.id})" title="Reprovar">
+                    <i class="fas fa-times"></i>
+                </button>
+            ` : ''}
+            <button class="secondary" onclick="verDetalhes(${demanda.id})" title="Ver Detalhes">
+                <i class="fas fa-eye"></i>
+            </button>
+            ${podeAprovar ? `
+                <button class="danger" onclick="apagarDemanda(${demanda.id})" title="Apagar">
+                    <i class="fas fa-trash"></i>
+                </button>
+            ` : ''}
+        </div>
+    `;
+    
+    return div;
+}
     // Função para alternar seleção de demandas atrasadas
     function toggleOverdueSelection(demandaId) {
         if (selectedOverdueDemands.has(demandaId)) {
@@ -5612,10 +5717,13 @@ function verDetalhes(id) {
         diasSemanaInfo = `<p><strong>Dias da Semana:</strong> ${diasFormatados}</p>`;
     }
     
-    const content = `
-        <div class="demanda-details">
-            <h3>${demandaNormalizada.nomeDemanda || 'Sem Título'}</h3>
-            
+   // Adicione esta linha na função verDetalhes, após o título da demanda:
+const content = `
+    <div class="demanda-details">
+        <h3>
+            ${demandaNormalizada.nomeDemanda || 'Sem Título'}
+            ${temComentarios ? `<span class="comentarios-count">${totalComentarios} comentário(s)</span>` : ''}
+        </h3>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
                 <div>
                     <p><strong>Funcionário:</strong> ${demandaNormalizada.nomeFuncionario}</p>
@@ -5953,11 +6061,21 @@ function verDetalhes(id) {
     }
 
     // Filtrar dashboard
-    function filtrarDashboard() {
-        filtroFuncionarioAtual = document.getElementById('filtroFuncionario').value;
-        atualizarDashboard();
-        atualizarGraficos();
+ function filtrarDashboard() {
+    filtroFuncionarioAtual = document.getElementById('filtroFuncionario').value;
+    const comentariosFilter = document.getElementById('filtroComentarios')?.value || 'todas';
+    
+    // Se houver filtro de comentários, aplique-o
+    if (comentariosFilter !== 'todas') {
+        // A lógica será aplicada na função getDemandasFiltradas
+        window.filtroComentariosAtual = comentariosFilter;
+    } else {
+        window.filtroComentariosAtual = null;
     }
+    
+    atualizarDashboard();
+    atualizarGraficos();
+}
 
     // Drill down
     function drillDown(type) {
