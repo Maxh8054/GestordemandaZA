@@ -12,6 +12,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <style>
+        
         /* Estilizar opções de gestores no multi-select */
 .multi-select-option label {
     display: flex;
@@ -1913,6 +1914,7 @@
 </div>
 
 <!-- Container de Login -->
+<!-- Container de Login -->
 <div class="login-container" id="loginContainer">
     <div class="login-card">
         <!-- COLE AQUI O BASE64 DO LOGO DA EMPRESA -->
@@ -1927,8 +1929,17 @@
         <form class="login-form" id="loginForm">
             <div class="form-group">
                 <label for="userSelect">Selecione seu nome:</label>
-                <select id="userSelect" required>
+                <select id="userSelect" required onchange="checkIfGestor()">
                     <option value="">Clique para selecionar...</option>
+                </select>
+            </div>
+            
+            <!-- FILTRO PARA GESTORES (INICIALMENTE OCULTO) -->
+            <div class="form-group" id="gestorViewFilter" style="display: none;">
+                <label for="viewType">Tipo de Visão:</label>
+                <select id="viewType">
+                    <option value="geral">Visão Geral</option>
+                    <option value="proprio">Próprio</option>
                 </select>
             </div>
             
@@ -2043,30 +2054,40 @@
                     <p>Sistema Avançado de Gestão de Demandas</p>
                 </div>
             </div>
-            <div class="header-controls">
-                <div class="user-badge" id="userBadge">
-                    <i class="fas fa-user"></i>
-                    <span id="userName">Carregando...</span>
-                </div>
-                <div style="position: relative;">
-                    <button onclick="toggleNotificationsDropdown()" title="Notificações">
-                        <i class="fas fa-bell"></i>
-                        <span class="badge" id="notificationCount">0</span>
-                    </button>
-                    <div id="notificationsDropdown" class="notifications-dropdown">
-                        <div class="notifications-header">
-                            <span>Notificações</span>
-                            <button class="clear-notifications-btn" onclick="clearAllNotifications()">Limpar</button>
-                        </div>
-                        <div id="notificationsList">
-                            <p style="padding: 15px; text-align: center; color: #aaa;">Nenhuma notificação</p>
-                        </div>
-                    </div>
-                </div>
-                <button onclick="logout()" title="Sair">
-                    <i class="fas fa-sign-out-alt"></i>
-                </button>
+           <!-- Adicionar no header-controls -->
+<div class="header-controls">
+    <div class="user-badge" id="userBadge">
+        <i class="fas fa-user"></i>
+        <span id="userName">Carregando...</span>
+    </div>
+    
+    <!-- CONTROLE DE VISÃO PARA GESTORES -->
+    <div id="viewToggle" style="display: none; margin-right: 10px;">
+        <select id="viewTypeToggle" onchange="changeViewType()" style="padding: 5px; border-radius: 4px; border: 1px solid #ccc;">
+            <option value="geral">Visão Geral</option>
+            <option value="proprio">Próprio</option>
+        </select>
+    </div>
+    
+    <div style="position: relative;">
+        <button onclick="toggleNotificationsDropdown()" title="Notificações">
+            <i class="fas fa-bell"></i>
+            <span class="badge" id="notificationCount">0</span>
+        </button>
+        <div id="notificationsDropdown" class="notifications-dropdown">
+            <div class="notifications-header">
+                <span>Notificações</span>
+                <button class="clear-notifications-btn" onclick="clearAllNotifications()">Limpar</button>
             </div>
+            <div id="notificationsList">
+                <p style="padding: 15px; text-align: center; color: #aaa;">Nenhuma notificação</p>
+            </div>
+        </div>
+    </div>
+    <button onclick="logout()" title="Sair">
+        <i class="fas fa-sign-out-alt"></i>
+    </button>
+</div>
         </header>
 
         <main>
@@ -3006,6 +3027,23 @@ function aprovarDemanda(id, nomeFuncionario) {
         });
     }
 }
+// Verificar se o usuário selecionado é gestor e mostrar/esconder filtro
+function checkIfGestor() {
+    const userSelect = document.getElementById('userSelect');
+    const gestorViewFilter = document.getElementById('gestorViewFilter');
+    
+    if (userSelect.value) {
+        const usuario = usuarios.find(u => u.id == userSelect.value);
+        if (usuario && usuario.role === 'gestor') {
+            gestorViewFilter.style.display = 'block';
+        } else {
+            gestorViewFilter.style.display = 'none';
+            document.getElementById('viewType').value = 'proprio'; // Reset para funcionários
+        }
+    } else {
+        gestorViewFilter.style.display = 'none';
+    }
+}
     // Função para inicializar o reconhecimento de fala
     function inicializarReconhecimentoFala() {
         if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
@@ -3334,37 +3372,48 @@ function aprovarDemanda(id, nomeFuncionario) {
     }
 
     // Sistema de Login
-    document.getElementById('loginForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const userId = document.getElementById('userSelect').value;
-        const password = document.getElementById('passwordInput').value;
-        
-        const usuario = usuarios.find(u => u.id == userId);
-        
-        if (!usuario) {
-            showNotification('error', 'Erro de Login', 'Usuário não encontrado');
-            return;
-        }
-        
-        if (usuario.senha !== password) {
-            showNotification('error', 'Erro de Login', 'Senha incorreta');
-            return;
-        }
-        
-        usuarioLogado = usuario;
-        sessionStorage.setItem('usuarioLogado', JSON.stringify(usuario));
-        
-        document.getElementById('loginContainer').style.display = 'none';
-        document.getElementById('mainContainer').style.display = 'block';
-        
-        configurarInterfaceUsuario();
-        inicializarSistemaPrincipal();
-        
-        carregarNotificacoesDoStorage();
-        
-        showNotification('success', 'Bem-vindo!', `Olá, ${usuario.nome}! Você está logado como ${usuario.role === 'gestor' ? 'Gestor' : 'Funcionário'}`);
-    });
+   // Sistema de Login
+document.getElementById('loginForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const userId = document.getElementById('userSelect').value;
+    const password = document.getElementById('passwordInput').value;
+    const viewType = document.getElementById('viewType').value;
+    
+    const usuario = usuarios.find(u => u.id == userId);
+    
+    if (!usuario) {
+        showNotification('error', 'Erro de Login', 'Usuário não encontrado');
+        return;
+    }
+    
+    if (usuario.senha !== password) {
+        showNotification('error', 'Erro de Login', 'Senha incorreta');
+        return;
+    }
+    
+    usuarioLogado = usuario;
+    
+    // Salvar tipo de visão para gestores
+    if (usuarioLogado.role === 'gestor') {
+        usuarioLogado.viewType = viewType;
+    } else {
+        usuarioLogado.viewType = 'proprio'; // Funcionários sempre têm visão própria
+    }
+    
+    sessionStorage.setItem('usuarioLogado', JSON.stringify(usuarioLogado));
+    
+    document.getElementById('loginContainer').style.display = 'none';
+    document.getElementById('mainContainer').style.display = 'block';
+    
+    configurarInterfaceUsuario();
+    inicializarSistemaPrincipal();
+    
+    carregarNotificacoesDoStorage();
+    
+    const viewText = viewType === 'geral' ? 'Visão Geral' : 'Própria';
+    showNotification('success', 'Bem-vindo!', `Olá, ${usuario.nome}! Você está logado como ${usuario.role === 'gestor' ? `Gestor (${viewText})` : 'Funcionário'}`);
+});
 
     // Formulário de esqueci senha
     document.getElementById('forgotPasswordForm').addEventListener('submit', function(e) {
@@ -3826,10 +3875,16 @@ function inicializarCampoMultiSelect() {
 
     // Obter demandas para o usuário logado
     // Obter demandas para o usuário logado
+// Obter demandas para o usuário logado (atualizada para suportar visão geral/própria)
 function getDemandasParaUsuarioLogado() {
     if (!usuarioLogado) return [];
     
-    // Para gestores, mostrar apenas demandas que não foram atribuídas a outros
+    // Se for gestor e estiver em visão geral
+    if (usuarioLogado.role === 'gestor' && usuarioLogado.viewType === 'geral') {
+        return getDemandasVisaoGeral();
+    }
+    
+    // Para gestores em visão própria ou funcionários
     if (usuarioLogado.role === 'gestor') {
         return todasDemandas.filter(demanda => {
             // Se a demanda foi criada pelo gestor E não foi atribuída a ninguém OU foi atribuída ao próprio gestor
@@ -3852,7 +3907,64 @@ function getDemandasParaUsuarioLogado() {
     }
     return [];
 }
+// Alternar tipo de visão
+function changeViewType() {
+    if (!usuarioLogado || usuarioLogado.role !== 'gestor') return;
+    
+    const newViewType = document.getElementById('viewTypeToggle').value;
+    usuarioLogado.viewType = newViewType;
+    
+    // Atualizar no sessionStorage
+    sessionStorage.setItem('usuarioLogado', JSON.stringify(usuarioLogado));
+    
+    // Atualizar interface
+    const viewText = newViewType === 'geral' ? 'Visão Geral' : 'Própria';
+    showNotification('info', 'Visão Alterada', `Agora você está usando a ${viewText}`);
+    
+    // Recarregar dashboard e outras abas
+    atualizarDashboard();
+    renderizarTodasAsAbas();
+    atualizarBadges();
+}
 
+// Atualizar função configurarInterfaceUsuario para mostrar o controle de visão
+function configurarInterfaceUsuario() {
+    const userBadge = document.getElementById('userBadge');
+    const userName = document.getElementById('userName');
+    const viewToggle = document.getElementById('viewToggle');
+    const viewTypeToggle = document.getElementById('viewTypeToggle');
+    
+    if (userBadge && userName) {
+        userName.textContent = usuarioLogado.nome;
+        
+        if (usuarioLogado.role === 'gestor') {
+            userBadge.classList.add('gestor');
+            const viewText = usuarioLogado.viewType === 'geral' ? 'Visão Geral' : 'Própria';
+            userBadge.innerHTML = '<i class="fas fa-user-shield"></i> <span>' + usuarioLogado.nome + ' (Gestor - ' + viewText + ')</span>';
+            
+            // Mostrar controle de visão
+            if (viewToggle && viewTypeToggle) {
+                viewToggle.style.display = 'block';
+                viewTypeToggle.value = usuarioLogado.viewType || 'proprio';
+            }
+            
+            document.getElementById('gestorTab').style.display = 'block';
+            document.getElementById('gestorTab2').style.display = 'block';
+            document.getElementById('gestorTab4').style.display = 'block';
+            document.getElementById('gestorTab5').style.display = 'block';
+            document.getElementById('gestorActions2').style.display = 'flex';
+            document.getElementById('gestorActions3').style.display = 'flex';
+            document.getElementById('exportRankingBtn').style.display = 'inline-block';
+        } else {
+            userBadge.innerHTML = '<i class="fas fa-user"></i> <span>' + usuarioLogado.nome + '</span>';
+            
+            // Esconder controle de visão para funcionários
+            if (viewToggle) {
+                viewToggle.style.display = 'none';
+            }
+        }
+    }
+}
     // Obter demandas dos colaboradores
     // Obter demandas dos colaboradores
 // Obter demandas dos colaboradores
