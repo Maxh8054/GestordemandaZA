@@ -3487,29 +3487,61 @@ document.getElementById('loginForm').addEventListener('submit', function(e) {
     });
 
     // Configurar interface do usuário
-    function configurarInterfaceUsuario() {
-        const userBadge = document.getElementById('userBadge');
-        const userName = document.getElementById('userName');
+    // Configurar interface do usuário
+function configurarInterfaceUsuario() {
+    const userBadge = document.getElementById('userBadge');
+    const userName = document.getElementById('userName');
+    const viewToggle = document.getElementById('viewToggle');
+    const viewTypeToggle = document.getElementById('viewTypeToggle');
+    
+    if (userBadge && userName) {
+        userName.textContent = usuarioLogado.nome;
         
-        if (userBadge && userName) {
-            userName.textContent = usuarioLogado.nome;
+        if (usuarioLogado.role === 'gestor') {
+            userBadge.classList.add('gestor');
+            const viewText = usuarioLogado.viewType === 'geral' ? 'Visão Geral' : 'Própria';
+            userBadge.innerHTML = '<i class="fas fa-user-shield"></i> <span>' + usuarioLogado.nome + ' (Gestor - ' + viewText + ')</span>';
             
-            if (usuarioLogado.role === 'gestor') {
-                userBadge.classList.add('gestor');
-                userBadge.innerHTML = '<i class="fas fa-user-shield"></i> <span>' + usuarioLogado.nome + ' (Gestor)</span>';
-                document.getElementById('gestorTab').style.display = 'block';
-                document.getElementById('gestorTab2').style.display = 'block';
-                document.getElementById('gestorTab4').style.display = 'block';
-                document.getElementById('gestorTab5').style.display = 'block';
-                document.getElementById('gestorActions2').style.display = 'flex';
-                document.getElementById('gestorActions3').style.display = 'flex';
-                document.getElementById('exportRankingBtn').style.display = 'inline-block';
-            } else {
-                userBadge.innerHTML = '<i class="fas fa-user"></i> <span>' + usuarioLogado.nome + '</span>';
+            // Mostrar controle de visão
+            if (viewToggle && viewTypeToggle) {
+                viewToggle.style.display = 'block';
+                viewTypeToggle.value = usuarioLogado.viewType || 'proprio';
+            }
+            
+            document.getElementById('gestorTab').style.display = 'block';
+            document.getElementById('gestorTab2').style.display = 'block';
+            document.getElementById('gestorTab4').style.display = 'block';
+            document.getElementById('gestorTab5').style.display = 'block';
+            document.getElementById('gestorActions2').style.display = 'flex';
+            document.getElementById('gestorActions3').style.display = 'flex';
+            document.getElementById('exportRankingBtn').style.display = 'inline-block';
+            
+            // CORREÇÃO: CONTROLE DAS ABAS CONFORME A VISÃO
+            const pendentesTab = document.querySelector('.tab[onclick*="pendentes"]');
+            const colabTab = document.getElementById('gestorTab');
+            
+            if (pendentesTab && colabTab) {
+                if (usuarioLogado.viewType === 'geral') {
+                    // VISÃO GERAL: Ocultar "Minhas Demandas", manter "Pendentes Colaboradores"
+                    pendentesTab.style.display = 'none';
+                    colabTab.style.display = 'block';
+                } else {
+                    // VISÃO PRÓPRIA: Mostrar "Minhas Demandas" e "Pendentes Colaboradores"
+                    pendentesTab.style.display = 'block';
+                    colabTab.style.display = 'block';
+                }
+            }
+            
+        } else {
+            userBadge.innerHTML = '<i class="fas fa-user"></i> <span>' + usuarioLogado.nome + '</span>';
+            
+            // Esconder controle de visão para funcionários
+            if (viewToggle) {
+                viewToggle.style.display = 'none';
             }
         }
     }
-
+}
     // Inicializar sistema principal
     async function inicializarSistemaPrincipal() {
         carregarFuncionariosNosSelect();
@@ -3880,9 +3912,11 @@ function inicializarCampoMultiSelect() {
 function getDemandasVisaoGeral() {
     if (!usuarioLogado || usuarioLogado.role !== 'gestor') return [];
     
-    // Para visão geral, mostrar todas as demandas que aparecem na aba "Pendentes Colaboradores"
-    // Isso inclui demandas criadas por gestores e atribuídas a funcionários ou outros gestores
-    // E também demandas criadas por funcionários
+    // Para visão geral, mostrar TODAS as demandas que aparecem na aba "Pendentes Colaboradores"
+    // Isso inclui:
+    // 1. Demandas criadas por gestores e atribuídas a funcionários ou outros gestores
+    // 2. Demandas criadas por gestores e NÃO atribuídas (IMPORTANTE!)
+    // 3. Demandas criadas por funcionários (compatibilidade)
     return todasDemandas.filter(demanda => {
         // Verificar se o criador é um gestor
         const criadorEGestor = usuarios.some(u => u.role === 'gestor' && u.id === demanda.funcionarioId);
@@ -3894,16 +3928,22 @@ function getDemandasVisaoGeral() {
                 return usuario && (usuario.role === 'funcionario' || usuario.role === 'gestor');
             });
         
+        // Verificar se NÃO foi atribuída (para incluir demandas de gestores sem atribuição)
+        const naoAtribuida = !demanda.atribuidos || demanda.atribuidos.length === 0;
+        
         // Manter compatibilidade com demandas criadas por funcionários
         const criadaPorFuncionario = usuarios.some(u => u.role === 'funcionario' && u.id === demanda.funcionarioId);
         
-        // Incluir todas as demandas que aparecem na aba de colaboradores
-        return (criadorEGestor && atribuidaAFuncionariosOuGestores) || criadaPorFuncionario;
+        // REGRA CORRIGIDA:
+        // Mostrar se:
+        // (foi criada por gestor E (atribuída a alguém OU não atribuída)) OU (foi criada por funcionário)
+        return (criadorEGestor && (atribuidaAFuncionariosOuGestores || naoAtribuida)) || criadaPorFuncionario;
     });
 }
 
 // Obter demandas para o usuário logado (atualizada para suportar visão geral/própria)
 // Obter demandas para o usuário logado (atualizada para suportar visão geral/própria)
+// Obter demandas para o usuário logado (CORRIGIDA)
 function getDemandasParaUsuarioLogado() {
     if (!usuarioLogado) return [];
     
@@ -3912,7 +3952,7 @@ function getDemandasParaUsuarioLogado() {
         return getDemandasVisaoGeral();
     }
     
-    // Para gestores em visão própria - mostrar APENAS suas demandas
+    // Para gestores em visão própria - mostrar APENAS suas demandas (como funcionário)
     if (usuarioLogado.role === 'gestor') {
         return todasDemandas.filter(demanda => {
             // Mostrar apenas se:
@@ -3939,6 +3979,7 @@ function getDemandasParaUsuarioLogado() {
 // Alternar tipo de visão
 // Alternar tipo de visão
 // Alternar tipo de visão
+// Alternar tipo de visão
 function changeViewType() {
     if (!usuarioLogado || usuarioLogado.role !== 'gestor') return;
     
@@ -3955,17 +3996,29 @@ function changeViewType() {
         userBadge.innerHTML = '<i class="fas fa-user-shield"></i> <span>' + usuarioLogado.nome + ' (Gestor - ' + viewText + ')</span>';
     }
     
-    // CONTROLAR VISIBILIDADE DA ABA "MINHAS DEMANDAS"
+    // CORREÇÃO: CONTROLAR VISIBILIDADE DAS ABAS
     const pendentesTab = document.querySelector('.tab[onclick*="pendentes"]');
-    if (pendentesTab) {
+    const colabTab = document.getElementById('gestorTab');
+    
+    if (pendentesTab && colabTab) {
         if (newViewType === 'geral') {
-            // OCULTAR aba "Minhas Demandas" na visão geral
+            // VISÃO GERAL: Ocultar "Minhas Demandas", manter "Pendentes Colaboradores"
             pendentesTab.style.display = 'none';
-            showNotification('info', 'Visão Geral', 'Aba "Minhas Demandas" ocultada. Use "Pendentes Colaboradores" para ver todas as demandas.');
+            colabTab.style.display = 'block';
+            showNotification('info', 'Visão Geral', 'Mostrando visão geral. Use "Pendentes Colaboradores" para gerenciar.');
         } else {
-            // MOSTRAR aba "Minhas Demandas" na visão própria
+            // VISÃO PRÓPRIA: Mostrar "Minhas Demandas" e "Pendentes Colaboradores"
             pendentesTab.style.display = 'block';
-            showNotification('info', 'Visão Própria', 'Aba "Minhas Demandas" ativada com suas demandas.');
+            colabTab.style.display = 'block';
+            showNotification('info', 'Visão Própria', 'Mostrando apenas suas demandas.');
+        }
+    }
+    
+    // Se estiver saindo da aba "Minhas Demandas" e ela estiver ativa, mudar para dashboard
+    if (newViewType === 'geral') {
+        const activeTab = document.querySelector('.tab.active');
+        if (activeTab && activeTab.onclick && activeTab.onclick.toString().includes('pendentes')) {
+            switchTab('dashboard');
         }
     }
     
