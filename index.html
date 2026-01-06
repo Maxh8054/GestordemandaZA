@@ -5462,11 +5462,16 @@ function criarElementoDemanda(demanda, isAtrasado = false) {
             ${tempoElement}
         </div>
         <div class="acoes-demandas">
-            ${(eDono || eAtribuido) && (demanda.status === 'pendente' || demanda.status === 'reprovada') ? `
-                <button class="success" onclick="abrirModalResolucao(${demanda.id})" title="Resolver Demanda">
-                    <i class="fas fa-tools"></i>
-                </button>
-            ` : ''}
+    ${eDono && (demanda.status === 'pendente' || demanda.status === 'reprovada' || demanda.status === 'atribuida_pendente_aceitacao') ? `
+        <button class="editar" onclick="abrirModalEditarDemanda(${demanda.id})" title="Editar Demanda">
+            <i class="fas fa-edit"></i>
+        </button>
+    ` : ''}
+    ${(eDono || eAtribuido) && (demanda.status === 'pendente' || demanda.status === 'reprovada') ? `
+        <button class="success" onclick="abrirModalResolucao(${demanda.id})" title="Resolver Demanda">
+            <i class="fas fa-tools"></i>
+        </button>
+    ` : ''}
             ${podeAprovar && (demanda.status === 'finalizado_pendente_aprovacao') ? `
                 <button class="success" onclick="aprovarDemanda(${demanda.id}, '${demanda.nomeFuncionario}')" title="Aprovar">
                     <i class="fas fa-check"></i>
@@ -5592,30 +5597,6 @@ function criarElementoDemandaAtrasada(demanda, isAtrasado = false) {
             <div class="time-remaining">ATRASADA HÁ ${tempoRestante}</div>
         </div>
         <div class="acoes-demandas">
-            ${(eDono || eAtribuido) && (demanda.status === 'pendente' || demanda.status === 'reprovada') ? `
-                <button class="success" onclick="abrirModalResolucao(${demanda.id})" title="Resolver Demanda">
-                    <i class="fas fa-tools"></i>
-                </button>
-            ` : ''}
-            ${podeAprovar && (demanda.status === 'finalizado_pendente_aprovacao') ? `
-                <button class="success" onclick="aprovarDemanda(${demanda.id}, '${demanda.nomeFuncionario}')" title="Aprovar">
-                    <i class="fas fa-check"></i>
-                </button>
-                <button class="danger" onclick="abrirModalReprovar(${demanda.id})" title="Reprovar">
-                    <i class="fas fa-times"></i>
-                </button>
-            ` : ''}
-            <button class="secondary" onclick="verDetalhes(${demanda.id})" title="Ver Detalhes">
-                <i class="fas fa-eye"></i>
-            </button>
-            ${podeAprovar ? `
-                <button class="danger" onclick="apagarDemanda(${demanda.id})" title="Apagar">
-                    <i class="fas fa-trash"></i>
-                </button>
-            ` : ''}
-        </div>
-        // Na função criarElementoDemanda, adicione este botão nas ações:
-<div class="acoes-demandas">
     ${eDono && (demanda.status === 'pendente' || demanda.status === 'reprovada' || demanda.status === 'atribuida_pendente_aceitacao') ? `
         <button class="editar" onclick="abrirModalEditarDemanda(${demanda.id})" title="Editar Demanda">
             <i class="fas fa-edit"></i>
@@ -5626,8 +5607,24 @@ function criarElementoDemandaAtrasada(demanda, isAtrasado = false) {
             <i class="fas fa-tools"></i>
         </button>
     ` : ''}
-    // ... resto dos botões existentes ...
+    ${podeAprovar && (demanda.status === 'finalizado_pendente_aprovacao') ? `
+        <button class="success" onclick="aprovarDemanda(${demanda.id}, '${demanda.nomeFuncionario}')" title="Aprovar">
+            <i class="fas fa-check"></i>
+        </button>
+        <button class="danger" onclick="abrirModalReprovar(${demanda.id})" title="Reprovar">
+            <i class="fas fa-times"></i>
+        </button>
+    ` : ''}
+    <button class="secondary" onclick="verDetalhes(${demanda.id})" title="Ver Detalhes">
+        <i class="fas fa-eye"></i>
+    </button>
+    ${podeAprovar ? `
+        <button class="danger" onclick="apagarDemanda(${demanda.id})" title="Apagar">
+            <i class="fas fa-trash"></i>
+        </button>
+    ` : ''}
 </div>
+        
     `;
     
     return div;
