@@ -83,6 +83,362 @@ criarIndices();
 }
 });
 }
+// Adicione esta função após a função inicializarBancoDados()
+function adicionarColunaComentariosUsuarios() {
+    // Verificar se a coluna comentariosUsuarios já existe
+    db.all("PRAGMA table_info(demandas)", [], (err, columns) => {
+        if (err) {
+            console.error('Erro ao verificar colunas da tabela:', err);
+            return;
+        }
+        
+        const hasComentariosUsuarios = columns.some(col => col.name === 'comentariosUsuarios');
+        
+        if (!hasComentariosUsuarios) {
+            // Adicionar a coluna comentariosUsuarios
+            db.run("ALTER TABLE demandas ADD COLUMN comentariosUsuarios TEXT DEFAULT '[]'", (err) => {
+                if (err) {
+                    console.error('Erro ao adicionar coluna comentariosUsuarios:', err);
+                } else {
+                    console.log('✅ Coluna comentariosUsuarios adicionada com sucesso');
+                }
+            });
+        }
+    });
+}
+
+// Modifique a função inicializarBancoDados para chamar a nova função
+function inicializarBancoDados() {
+    // Tabela de demandas com índices
+    db.run(`
+    CREATE TABLE IF NOT EXISTS demandas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    funcionarioId INTEGER NOT NULL,
+    nomeFuncionario TEXT NOT NULL,
+    emailFuncionario TEXT NOT NULL,
+    categoria TEXT NOT NULL,
+    prioridade TEXT NOT NULL,
+    complexidade TEXT NOT NULL,
+    descricao TEXT NOT NULL,
+    local TEXT NOT NULL,
+    dataCriacao TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    dataLimite TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pendente',
+    isRotina INTEGER DEFAULT 0,
+    diasSemana TEXT,
+    tag TEXT UNIQUE,
+    comentarios TEXT DEFAULT '',
+    comentarioGestor TEXT DEFAULT '',
+    dataConclusao TEXT,
+    atribuidos TEXT DEFAULT '[]',
+    anexosCriacao TEXT DEFAULT '[]',
+    anexosResolucao TEXT DEFAULT '[]',
+    comentarioReprovacaoAtribuicao TEXT DEFAULT '',
+    nomeDemanda TEXT,
+    dataAtualizacao TEXT DEFAULT CURRENT_TIMESTAMP,
+    criadoPor INTEGER,
+    atualizadoPor INTEGER,
+    comentariosUsuarios TEXT DEFAULT '[]'
+    )
+    `, (err) => {
+        if (err) console.error('Erro ao criar tabela demandas:', err);
+        else {
+            console.log('✅ Tabela demandas criada/verificada');
+            criarIndices();
+            // Adicionar a nova coluna se não existir
+            adicionarColunaComentariosUsuarios();
+        }
+    });
+}
+
+// Modifique a função normalizarDadosDemanda para incluir os comentários dos usuários
+function normalizarDadosDemanda(demanda) {
+    if (!demanda) return demanda;
+
+    // Garante que 'diasSemana' seja um array
+    if (typeof demanda.diasSemana === 'string') {
+        try {
+            demanda.diasSemana = JSON.parse(demanda.diasSemana);
+        } catch (e) {
+            demanda.diasSemana = [];
+        }
+    } else if (!Array.isArray(demanda.diasSemana)) {
+        demanda.diasSemana = [];
+    }
+
+    // Garante que 'atribuidos' seja um array
+    if (typeof demanda.atribuidos === 'string') {
+        try {
+            demanda.atribuidos = JSON.parse(demanda.atribuidos);
+        } catch (e) {
+            demanda.atribuidos = [];
+        }
+    } else if (!Array.isArray(demanda.atribuidos)) {
+        demanda.atribuidos = [];
+    }
+
+    // Garante que 'isRotina' seja um booleano
+    demanda.isRotina = Boolean(demanda.isRotina);
+
+    // Garante que 'anexosCriacao' seja um array
+    if (typeof demanda.anexosCriacao === 'string') {
+        try {
+            demanda.anexosCriacao = JSON.parse(demanda.anexosCriacao);
+        } catch (e) {
+            demanda.anexosCriacao = [];
+        }
+    } else if (!Array.isArray(demanda.anexosCriacao)) {
+        demanda.anexosCriacao = [];
+    }
+
+    // Garante que 'anexosResolucao' seja um array
+    if (typeof demanda.anexosResolucao === 'string') {
+        try {
+            demanda.anexosResolucao = JSON.parse(demanda.anexosResolucao);
+        } catch (e) {
+            demanda.anexosResolucao = [];
+        }
+    } else if (!Array.isArray(demanda.anexosResolucao)) {
+        demanda.anexosResolucao = [];
+    }
+
+    // Garante que 'comentariosUsuarios' seja um array
+    if (typeof demanda.comentariosUsuarios === 'string') {
+        try {
+            demanda.comentariosUsuarios = JSON.parse(demanda.comentariosUsuarios);
+        } catch (e) {
+            demanda.comentariosUsuarios = [];
+        }
+    } else if (!Array.isArray(demanda.comentariosUsuarios)) {
+        demanda.comentariosUsuarios = [];
+    }
+
+    return demanda;
+}
+
+// Modifique a rota POST /api/demandas para incluir os comentários dos usuários
+app.post('/api/demandas', validarDemanda, (req, res) => {
+    const d = req.body;
+
+    // Normalizar dados antes de salvar
+    const dadosNormalizados = normalizarDadosDemanda(d);
+
+    // Gerar TAG única se não fornecida
+    if (!dadosNormalizados.tag) {
+        dadosNormalizados.tag = `DEM-${Date.now()}`;
+    }
+
+    const sql = `
+    INSERT INTO demandas
+    (funcionarioId, nomeFuncionario, emailFuncionario, categoria, prioridade, complexidade, descricao, local, dataCriacao, dataLimite, status, isRotina, diasSemana, tag, comentarios, comentarioGestor, atribuidos, anexosCriacao, nomeDemanda, criadoPor, comentariosUsuarios)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    const params = [
+        dadosNormalizados.funcionarioId,
+        dadosNormalizados.nomeFuncionario,
+        dadosNormalizados.emailFuncionario,
+        dadosNormalizados.categoria,
+        dadosNormalizados.prioridade,
+        dadosNormalizados.complexidade,
+        dadosNormalizados.descricao,
+        dadosNormalizados.local,
+        dadosNormalizados.dataCriacao || new Date().toISOString(),
+        dadosNormalizados.dataLimite,
+        dadosNormalizados.status || 'pendente',
+        dadosNormalizados.isRotina ? 1 : 0,
+        JSON.stringify(dadosNormalizados.diasSemana),
+        dadosNormalizados.tag,
+        dadosNormalizados.comentarios || '',
+        dadosNormalizados.comentarioGestor || '',
+        JSON.stringify(dadosNormalizados.atribuidos),
+        JSON.stringify(dadosNormalizados.anexosCriacao),
+        dadosNormalizados.nomeDemanda,
+        dadosNormalizados.funcionarioId,
+        JSON.stringify(dadosNormalizados.comentariosUsuarios || [])
+    ];
+
+    db.run(sql, params, function(err) {
+        if (err) {
+            console.error('Erro ao criar demanda:', err);
+            return res.status(500).json({ success: false, error: err.message });
+        }
+
+        // Registrar auditoria
+        registrarAuditoria(
+            'CREATE',
+            'demandas',
+            this.lastID,
+            null,
+            dadosNormalizados,
+            dadosNormalizados.funcionarioId,
+            req.ip
+        );
+
+        res.json({
+            success: true,
+            demanda: { id: this.lastID, ...dadosNormalizados, dataCriacao: params[8] }
+        });
+    });
+});
+
+// Modifique a rota PUT /api/demandas/:id para incluir os comentários dos usuários
+app.put('/api/demandas/:id', (req, res) => {
+    const id = req.params.id;
+    const d = req.body;
+
+    // Buscar demanda existente
+    db.get('SELECT * FROM demandas WHERE id = ?', [id], (err, demandaExistente) => {
+        if (err) {
+            console.error('Erro ao buscar demanda:', err);
+            return res.status(500).json({ success: false, error: err.message });
+        }
+
+        if (!demandaExistente) {
+            return res.status(404).json({ success: false, error: 'Demanda não encontrada' });
+        }
+
+        // Normalizar dados antes de atualizar
+        const dadosNormalizados = normalizarDadosDemanda(d);
+
+        const dadosCompletos = { ...demandaExistente, ...dadosNormalizados };
+
+        // Atualizar data de modificação
+        dadosCompletos.dataAtualizacao = new Date().toISOString();
+        dadosCompletos.atualizadoPor = d.funcionarioId;
+
+        const sql = `
+        UPDATE demandas SET
+        funcionarioId = ?, nomeFuncionario = ?, emailFuncionario = ?, categoria = ?, prioridade = ?,
+        complexidade = ?, descricao = ?, local = ?, dataLimite = ?, status = ?,
+        isRotina = ?, diasSemana = ?, tag = ?, comentarios = ?, comentarioGestor = ?,
+        dataConclusao = ?, atribuidos = ?, anexosCriacao = ?, anexosResolucao = ?,
+        comentarioReprovacaoAtribuicao = ?, nomeDemanda = ?, dataAtualizacao = ?, atualizadoPor = ?, comentariosUsuarios = ?
+        WHERE id = ?
+        `;
+
+        const params = [
+            dadosCompletos.funcionarioId,
+            dadosCompletos.nomeFuncionario,
+            dadosCompletos.emailFuncionario,
+            dadosCompletos.categoria,
+            dadosCompletos.prioridade,
+            dadosCompletos.complexidade,
+            dadosCompletos.descricao,
+            dadosCompletos.local,
+            dadosCompletos.dataLimite,
+            dadosCompletos.status,
+            dadosCompletos.isRotina ? 1 : 0,
+            JSON.stringify(dadosCompletos.diasSemana),
+            dadosCompletos.tag,
+            dadosCompletos.comentarios || '',
+            dadosCompletos.comentarioGestor || '',
+            dadosCompletos.dataConclusao || null,
+            JSON.stringify(dadosCompletos.atribuidos),
+            JSON.stringify(dadosCompletos.anexosCriacao),
+            JSON.stringify(dadosCompletos.anexosResolucao),
+            dadosCompletos.comentarioReprovacaoAtribuicao || '',
+            dadosCompletos.nomeDemanda,
+            dadosCompletos.dataAtualizacao,
+            dadosCompletos.atualizadoPor,
+            JSON.stringify(dadosCompletos.comentariosUsuarios || []),
+            id
+        ];
+
+        db.run(sql, params, function(err) {
+            if (err) {
+                console.error('Erro ao atualizar demanda:', err);
+                return res.status(500).json({ success: false, error: err.message });
+            }
+
+            // Registrar auditoria
+            registrarAuditoria(
+                'UPDATE',
+                'demandas',
+                id,
+                demandaExistente,
+                dadosCompletos,
+                d.funcionarioId,
+                req.ip
+            );
+
+            // Criar backup para mudanças de status
+            if (['aprovada', 'reprovada'].includes(d.status)) {
+                criarBackup('status_change');
+            }
+
+            res.json({
+                success: true,
+                demanda: { id: parseInt(id), ...dadosCompletos }
+            });
+        });
+    });
+});
+
+// Modifique a rota POST /api/restore para incluir os comentários dos usuários
+app.post('/api/restore', (req, res) => {
+    const { demandas } = req.body;
+
+    if (!Array.isArray(demandas)) {
+        return res.status(400).json({ success: false, error: 'Formato inválido' });
+    }
+
+    let successCount = 0;
+    let errorCount = 0;
+
+    demandas.forEach(demanda => {
+        const dadosNormalizados = normalizarDadosDemanda(demanda);
+
+        const sql = `
+        INSERT OR REPLACE INTO demandas
+        (id, funcionarioId, nomeFuncionario, emailFuncionario, categoria, prioridade, complexidade, descricao, local, dataCriacao, dataLimite, status, isRotina, diasSemana, tag, comentarios, comentarioGestor, dataConclusao, atribuidos, anexosCriacao, anexosResolucao, comentarioReprovacaoAtribuicao, nomeDemanda, comentariosUsuarios)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `;
+
+        const params = [
+            dadosNormalizados.id,
+            dadosNormalizados.funcionarioId,
+            dadosNormalizados.nomeFuncionario,
+            dadosNormalizados.emailFuncionario,
+            dadosNormalizados.categoria,
+            dadosNormalizados.prioridade,
+            dadosNormalizados.complexidade,
+            dadosNormalizados.descricao,
+            dadosNormalizados.local,
+            dadosNormalizados.dataCriacao,
+            dadosNormalizados.dataLimite,
+            dadosNormalizados.status,
+            dadosNormalizados.isRotina ? 1 : 0,
+            JSON.stringify(dadosNormalizados.diasSemana),
+            dadosNormalizados.tag,
+            dadosNormalizados.comentarios || '',
+            dadosNormalizados.comentarioGestor || '',
+            dadosNormalizados.dataConclusao || null,
+            JSON.stringify(dadosNormalizados.atribuidos),
+            JSON.stringify(dadosNormalizados.anexosCriacao),
+            JSON.stringify(dadosNormalizados.anexosResolucao),
+            dadosNormalizados.comentarioReprovacaoAtribuicao || '',
+            dadosNormalizados.nomeDemanda,
+            JSON.stringify(dadosNormalizados.comentariosUsuarios || [])
+        ];
+
+        db.run(sql, params, function(err) {
+            if (err) {
+                errorCount++;
+                console.error('Erro ao restaurar demanda:', err);
+            } else {
+                successCount++;
+            }
+        });
+    });
+
+    setTimeout(() => {
+        res.json({
+            success: true,
+            message: `Restauração concluída. ${successCount} demandas restauradas, ${errorCount} erros.`
+        });
+    }, 1000);
+});
 
 // Criar índices para performance
 function criarIndices() {
