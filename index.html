@@ -12,6 +12,32 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <style>
+        /* Estilizar opções de gestores no multi-select */
+.multi-select-option label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+}
+
+.multi-select-option .fa-user-shield {
+    color: #f39c12;
+}
+
+.multi-select-option .fa-user {
+    color: #3498db;
+}
+
+/* Destaque para gestores selecionados */
+.selected-item:has(.fa-user-shield) {
+    background-color: rgba(243, 156, 18, 0.2);
+    border: 1px solid rgba(243, 156, 18, 0.5);
+}
+
+.selected-item:has(.fa-user) {
+    background-color: rgba(52, 152, 219, 0.2);
+    border: 1px solid rgba(52, 152, 219, 0.5);
+}
         :root {
             --primary-color: #2c3e50;
             --secondary-color: #1a252f;
@@ -2909,7 +2935,77 @@
         // Inicializar reconhecimento de fala
         inicializarReconhecimentoFala();
     });
-
+// Função global para aprovar demanda
+function aprovarDemanda(id, nomeFuncionario) {
+    if (!confirm('Tem certeza que deseja aprovar esta demanda?')) return;
+    
+    const demanda = todasDemandas.find(d => d.id === id);
+    if (demanda) {
+        const dadosAtualizados = {
+            status: 'aprovada',
+            dataConclusao: new Date().toISOString()
+        };
+        
+        atualizarDemandaNoServidor(id, dadosAtualizados).then(sucesso => {
+            if (sucesso) {
+                carregarDadosDoServidor().then(() => {
+                    showNotification('success', 'Demanda Aprovada', `Demanda de ${nomeFuncionario} foi aprovada com sucesso!`);
+                    
+                    // Definir gestores por local
+                    const gestoresPorLocal = {
+                        'R&D': ['jadson-r@zaminebrasil.com', 'emerson-a@zaminebrasil.com'],
+                        'Lundin': ['wallysson-s@zaminebrasil.com']
+                    };
+                    
+                    // Obter gestores específicos para o local da demanda
+                    const gestoresLocal = gestoresPorLocal[demanda.local] || [];
+                    
+                    const funcionario = usuarios.find(u => u.id === demanda.funcionarioId);
+                    if (funcionario) {
+                        const assunto = encodeURIComponent(`Sua Demanda Foi Aprovada: ${demanda.nomeDemanda || demanda.descricao}`);
+                        const corpo = encodeURIComponent(`Prezado(a) ${nomeFuncionario},\n\nSua demanda foi analisada e aprovada.\n\n--- Detalhes ---\nNome: ${demanda.nomeDemanda || demanda.descricao}\nTAG: ${demanda.tag}\nLocal: ${demanda.local}\n\nParabéns pelo excelente trabalho!\n\nAtenciosamente,\nGestão`);
+                        
+                        // Preparar emails
+                        let emailsPara = funcionario.email;
+                        let emailsCc = '';
+                        
+                        // Adicionar gestores do local em CC
+                        if (gestoresLocal.length > 0) {
+                            emailsCc = gestoresLocal.join(',');
+                        }
+                        
+                        let mailtoLink = `mailto:${emailsPara}?subject=${assunto}&body=${corpo}`;
+                        if (emailsCc) {
+                            mailtoLink += `&cc=${emailsCc}`;
+                        }
+                        window.open(mailtoLink, '_blank');
+                        
+                        if (userNotifications) {
+                            addUserNotification('success', 'Demanda Aprovada', `Sua demanda "${demanda.nomeDemanda}" foi aprovada!`, { tag: demanda.tag });
+                        }
+                    }
+                    
+                    // Notificar também os atribuídos
+                    if (demanda.atribuidos && Array.isArray(demanda.atribuidos)) {
+                        demanda.atribuidos.forEach(atribuido => {
+                            if (atribuido.id !== demanda.funcionarioId) {
+                                const usuarioAtribuido = usuarios.find(u => u.id === atribuido.id);
+                                if (usuarioAtribuido && userNotifications) {
+                                    addUserNotification('success', 'Demanda Aprovada', 
+                                        `A demanda "${demanda.nomeDemanda}" foi aprovada!`, 
+                                        { tag: demanda.tag }
+                                    );
+                                }
+                            }
+                        });
+                    }
+                    
+                    renderizarTodasAsAbas();
+                });
+            }
+        });
+    }
+}
     // Função para inicializar o reconhecimento de fala
     function inicializarReconhecimentoFala() {
         if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
@@ -3397,14 +3493,15 @@
    // Carregar funcionários nos selects
 // Carregar funcionários nos selects
 // Carregar funcionários nos selects
+// Carregar funcionários nos selects
 function carregarFuncionariosNosSelect() {
     const selects = [
         'filtroFuncionario', 
         'cobrancaFuncionario', 
         'colabFuncFilter', 
         'analiseFuncFilter', 
-        'atrasadasFuncFilter', // <-- ADICIONAR ESTE
-        'aprovadasFuncFilter', // <-- ADICIONAR ESTE
+        'atrasadasFuncFilter', 
+        'aprovadasFuncFilter', 
         'reassignTo', 
         'noteAssignTo', 
         'mindmapFuncFilter'
@@ -3419,23 +3516,37 @@ function carregarFuncionariosNosSelect() {
                 selectId === 'colabFuncFilter' || 
                 selectId === 'mindmapFuncFilter' || 
                 selectId === 'analiseFuncFilter' || 
-                selectId === 'atrasadasFuncFilter' || // <-- ADICIONAR ESTE
-                selectId === 'aprovadasFuncFilter') { // <-- ADICIONAR ESTE
+                selectId === 'atrasadasFuncFilter' || 
+                selectId === 'aprovadasFuncFilter') {
                 const defaultOption = new Option('Todos os Funcionários', 'todos');
                 select.add(defaultOption);
             } else if (selectId === 'cobrancaFuncionario') {
                 const defaultOption = new Option('Todos os Funcionários com Demandas Atrasadas', 'todos');
                 select.add(defaultOption);
             } else if (selectId === 'reassignTo') {
-                const defaultOption = new Option('Selecione um funcionário', '');
+                // Alterado para incluir funcionários e gestores
+                const defaultOption = new Option('Selecione um funcionário ou gestor', '');
                 select.add(defaultOption);
             } else if (selectId === 'noteAssignTo') {
                 const defaultOption = new Option('Não atribuir', '');
                 select.add(defaultOption);
             }
 
-            usuarios.filter(u => u.role === 'funcionario').forEach(func => {
-                const option = new Option(func.nome, func.id);
+            // Filtrar usuários com base no tipo de select
+            let usuariosParaMostrar = usuarios;
+            if (selectId === 'reassignTo') {
+                // Para reatribuição, mostrar funcionários e gestores
+                usuariosParaMostrar = usuarios.filter(u => u.role === 'funcionario' || u.role === 'gestor');
+            } else if (selectId === 'noteAssignTo') {
+                // Para notas, mostrar todos os usuários
+                usuariosParaMostrar = usuarios;
+            } else {
+                // Para outros filtros, mostrar apenas funcionários
+                usuariosParaMostrar = usuarios.filter(u => u.role === 'funcionario');
+            }
+
+            usuariosParaMostrar.forEach(usuario => {
+                const option = new Option(usuario.nome, usuario.id);
                 select.add(option);
             });
         }
@@ -3462,34 +3573,39 @@ function carregarFuncionariosNosSelect() {
     
     inicializarCampoMultiSelect();
 }
-
     // Inicializar campo de seleção múltipla
-    function inicializarCampoMultiSelect() {
-        const dropdown = document.getElementById('atribuidoADropdown');
-        if (!dropdown) return;
+   // Inicializar campo de seleção múltipla
+function inicializarCampoMultiSelect() {
+    const dropdown = document.getElementById('atribuidoADropdown');
+    if (!dropdown) return;
+    
+    dropdown.innerHTML = '';
+    
+    // Incluir tanto funcionários quanto gestores
+    usuarios.filter(u => u.role === 'funcionario' || u.role === 'gestor').forEach(usuario => {
+        const option = document.createElement('div');
+        option.className = 'multi-select-option';
         
-        dropdown.innerHTML = '';
+        // Adicionar ícone para diferenciar gestores
+        const icon = usuario.role === 'gestor' ? '<i class="fas fa-user-shield"></i> ' : '<i class="fas fa-user"></i> ';
+        const label = usuario.role === 'gestor' ? `${usuario.nome} (Gestor)` : usuario.nome;
         
-        usuarios.filter(u => u.role === 'funcionario').forEach(usuario => {
-            const option = document.createElement('div');
-            option.className = 'multi-select-option';
-            option.innerHTML = `
-                <input type="checkbox" id="user_${usuario.id}" value="${usuario.id}">
-                <label for="user_${usuario.id}">${usuario.nome}</label>
-            `;
-            
-            option.addEventListener('click', function(e) {
-                if (e.target.tagName !== 'INPUT') {
-                    const checkbox = this.querySelector('input[type="checkbox"]');
-                    checkbox.checked = !checkbox.checked;
-                }
-                updateSelectedUsers();
-            });
-            
-            dropdown.appendChild(option);
+        option.innerHTML = `
+            <input type="checkbox" id="user_${usuario.id}" value="${usuario.id}">
+            <label for="user_${usuario.id}">${icon}${label}</label>
+        `;
+        
+        option.addEventListener('click', function(e) {
+            if (e.target.tagName !== 'INPUT') {
+                const checkbox = this.querySelector('input[type="checkbox"]');
+                checkbox.checked = !checkbox.checked;
+            }
+            updateSelectedUsers();
         });
-    }
-
+        
+        dropdown.appendChild(option);
+    });
+}
     // Alternar dropdown de seleção múltipla
     function toggleMultiSelect(id) {
         const dropdown = document.getElementById(id + 'Dropdown');
