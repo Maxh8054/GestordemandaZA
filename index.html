@@ -1905,6 +1905,73 @@
     -ms-user-select: auto;
     user-select: auto;
 }
+/* Estilo para botão de comentários */
+.acoes-demandas button.info {
+    background-color: #3498db;
+}
+
+.acoes-demandas button.info:hover {
+    background-color: #2980b9;
+}
+
+/* Contador de comentários */
+.comment-count {
+    background-color: #e74c3c;
+    color: white;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    margin-left: 2px;
+    position: absolute;
+    top: -5px;
+    right: -5px;
+}
+
+/* Indicador visual de comentários na demanda */
+.demanda-item.has-comments {
+    border-left: 5px solid #3498db;
+}
+
+/* Modal de comentários */
+.comentarios-list {
+    max-height: 300px;
+    overflow-y: auto;
+    margin-bottom: 15px;
+}
+
+.comentario-item {
+    background: #f8f9fa;
+    border-left: 3px solid #3498db;
+    padding: 12px;
+    margin-bottom: 10px;
+    border-radius: 4px;
+}
+
+.comentario-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+}
+
+.comentario-autor {
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+.comentario-data {
+    color: #7f8c8d;
+    font-size: 0.8rem;
+}
+
+.comentario-conteudo {
+    line-height: 1.4;
+    white-space: pre-wrap;
+}
     </style>
 </head>
 <body>
@@ -5136,29 +5203,42 @@ function renderizarPendentesColaboradores() {
                 ${diasFormatados ? `<small><strong>Dias da semana:</strong> ${diasFormatados}</small>` : ''}
                 ${tempoElement}
             </div>
-            <div class="acoes-demandas">
-                ${(eDono || eAtribuido) && (demanda.status === 'pendente' || demanda.status === 'reprovada') ? `
-                    <button class="success" onclick="abrirModalResolucao(${demanda.id})" title="Resolver Demanda">
-                        <i class="fas fa-tools"></i>
-                    </button>
-                ` : ''}
-                ${podeAprovar && (demanda.status === 'finalizado_pendente_aprovacao') ? `
-                    <button class="success" onclick="aprovarDemanda(${demanda.id}, '${demanda.nomeFuncionario}')" title="Aprovar">
-                        <i class="fas fa-check"></i>
-                    </button>
-                    <button class="danger" onclick="abrirModalReprovar(${demanda.id})" title="Reprovar">
-                        <i class="fas fa-times"></i>
-                    </button>
-                ` : ''}
-                <button class="secondary" onclick="verDetalhes(${demanda.id})" title="Ver Detalhes">
-                    <i class="fas fa-eye"></i>
-                </button>
-                ${podeAprovar ? `
-                    <button class="danger" onclick="apagarDemanda(${demanda.id})" title="Apagar">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                ` : ''}
-            </div>
+           // Dentro da função criarElementoDemanda(), na seção de ações, adicione:
+<div class="acoes-demandas">
+    ${(eDono || eAtribuido) && (demanda.status === 'pendente' || demanda.status === 'reprovada') ? `
+        <button class="success" onclick="abrirModalResolucao(${demanda.id})" title="Resolver Demanda">
+            <i class="fas fa-tools"></i>
+        </button>
+        <button class="secondary" onclick="abrirModalEditar(${demanda.id})" title="Editar Demanda">
+            <i class="fas fa-edit"></i>
+        </button>
+    ` : ''}
+    
+    <!-- BOTÃO DE COMENTÁRIOS (para demandas não resolvidas) -->
+    ${demanda.status !== 'aprovada' ? `
+        <button class="info" onclick="abrirModalComentarios(${demanda.id})" title="Ver/Adicionar Comentários">
+            <i class="fas fa-comments${demanda.comentariosAndamento && demanda.comentariosAndamento.length > 0 ? '' : '-o'}"></i>
+            ${demanda.comentariosAndamento && demanda.comentariosAndamento.length > 0 ? `<span class="comment-count">${demanda.comentariosAndamento.length}</span>` : ''}
+        </button>
+    ` : ''}
+    
+    ${podeAprovar && (demanda.status === 'finalizado_pendente_aprovacao') ? `
+        <button class="success" onclick="aprovarDemanda(${demanda.id}, '${demanda.nomeFuncionario}')" title="Aprovar">
+            <i class="fas fa-check"></i>
+        </button>
+        <button class="danger" onclick="abrirModalReprovar(${demanda.id})" title="Reprovar">
+            <i class="fas fa-times"></i>
+        </button>
+    ` : ''}
+    <button class="secondary" onclick="verDetalhes(${demanda.id})" title="Ver Detalhes">
+        <i class="fas fa-eye"></i>
+    </button>
+    ${podeAprovar ? `
+        <button class="danger" onclick="apagarDemanda(${demanda.id})" title="Apagar">
+            <i class="fas fa-trash"></i>
+        </button>
+    ` : ''}
+</div>
         `;
         
         return div;
@@ -7004,32 +7084,62 @@ async function importarDemandas() {
         atualizarGraficos();
     }
 
-    // Adicionar listeners para os novos filtros de mês e ano
-    document.addEventListener('DOMContentLoaded', () => {
-        // Adicionar listeners para os filtros de mês que já existem
-        ['pendentesMonthFilter', 'analiseMonthFilter', 'atrasadasMonthFilter', 'aprovadasMonthFilter', 'colabMonthFilter', 'rankingMonthFilter', 'notesMonthFilter'].forEach(id => {
-            const element = document.getElementById(id);
-            if (element) {
-                element.addEventListener('change', () => {
-                    // A função correspondente será chamada baseada no ID
-                    if (id.includes('pendentes')) {
-                        filterPendentes();
-                    } else if (id.includes('analise')) {
-                        filterAnalise();
-                    } else if (id.includes('atrasadas')) {
-                        filterAtrasadas();
-                    } else if (id.includes('aprovadas')) {
-                        filterAprovadas();
-                    } else if (id.includes('colab')) {
-                        filterColabDemandas();
-                    } else if (id.includes('ranking')) {
-                        updateRanking();
-                    } else if (id.includes('notes')) {
-                        filterNotes();
-                    }
-                });
-            }
-        });
+   // Adicionar listeners para os novos filtros de mês e ano
+document.addEventListener('DOMContentLoaded', () => {
+    
+    // Adicionar listeners para os filtros de mês que já existem
+    ['pendentesMonthFilter', 'analiseMonthFilter', 'atrasadasMonthFilter', 'aprovadasMonthFilter', 'colabMonthFilter', 'rankingMonthFilter', 'notesMonthFilter'].forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.addEventListener('change', () => {
+                // A função correspondente será chamada baseada no ID
+                if (id.includes('pendentes')) {
+                    filterPendentes();
+                } else if (id.includes('analise')) {
+                    filterAnalise();
+                } else if (id.includes('atrasadas')) {
+                    filterAtrasadas();
+                } else if (id.includes('aprovadas')) {
+                    filterAprovadas();
+                } else if (id.includes('colab')) {
+                    filterColabDemandas();
+                } else if (id.includes('ranking')) {
+                    updateRanking();
+                } else if (id.includes('notes')) {
+                    filterNotes();
+                }
+            });
+        }
+    });
+
+    // ═══════════════════════════════════════════════════════════
+    // ADICIONE APENAS ESTA PARTE (FILTROS DE ANO):
+    // ═══════════════════════════════════════════════════════════
+    
+    // Adicionar listeners para os filtros de ano
+    ['pendentesYearFilter', 'analiseYearFilter', 'atrasadasYearFilter', 'aprovadasYearFilter', 'colabYearFilter', 'rankingYearFilter', 'notesYearFilter'].forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.addEventListener('change', () => {
+                // A função correspondente será chamada baseada no ID
+                if (id.includes('pendentes')) {
+                    filterPendentes();
+                } else if (id.includes('analise')) {
+                    filterAnalise();
+                } else if (id.includes('atrasadas')) {
+                    filterAtrasadas();
+                } else if (id.includes('aprovadas')) {
+                    filterAprovadas();
+                } else if (id.includes('colab')) {
+                    filterColabDemandas();
+                } else if (id.includes('ranking')) {
+                    updateRanking();
+                } else if (id.includes('notes')) {
+                    filterNotes();
+                }
+            });
+        }
+    });
 
         // Adicionar listeners para os novos filtros de ano
         ['pendentesYearFilter', 'analiseYearFilter', 'atrasadasYearFilter', 'aprovadasYearFilter', 'colabYearFilter', 'rankingYearFilter', 'notesYearFilter'].forEach(id => {
