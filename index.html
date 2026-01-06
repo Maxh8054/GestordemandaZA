@@ -3855,25 +3855,27 @@ function getDemandasParaUsuarioLogado() {
 
     // Obter demandas dos colaboradores
     // Obter demandas dos colaboradores
+// Obter demandas dos colaboradores
 function getDemandasDosColaboradores() {
     if (!usuarioLogado || usuarioLogado.role !== 'gestor') return [];
     
-    // Para gestores, mostrar todas as demandas que foram criadas por gestores E atribuídas a funcionários
+    // Para gestores, mostrar todas as demandas que foram criadas por gestores E atribuídas a funcionários ou outros gestores
     return todasDemandas.filter(demanda => {
         // Verificar se o criador é um gestor
         const criadorEGestor = usuarios.some(u => u.role === 'gestor' && u.id === demanda.funcionarioId);
         
-        // Verificar se foi atribuída a funcionários
-        const atribuidaAFuncionarios = Array.isArray(demanda.atribuidos) && 
+        // Verificar se foi atribuída a funcionários OU a outros gestores
+        const atribuidaAFuncionariosOuGestores = Array.isArray(demanda.atribuidos) && 
             demanda.atribuidos.some(a => {
                 const usuario = usuarios.find(u => u.id === a.id);
-                return usuario && usuario.role === 'funcionario';
+                return usuario && (usuario.role === 'funcionario' || usuario.role === 'gestor');
             });
         
-        // Mostrar se: (foi criada por gestor E atribuída a funcionários) OU (foi criada por funcionário - para manter compatibilidade)
+        // Manter compatibilidade com demandas criadas por funcionários
         const criadaPorFuncionario = usuarios.some(u => u.role === 'funcionario' && u.id === demanda.funcionarioId);
         
-        return (criadorEGestor && atribuidaAFuncionarios) || criadaPorFuncionario;
+        // Mostrar se: (foi criada por gestor E atribuída a funcionários ou gestores) OU (foi criada por funcionário)
+        return (criadorEGestor && atribuidaAFuncionariosOuGestores) || criadaPorFuncionario;
     });
 }
 
