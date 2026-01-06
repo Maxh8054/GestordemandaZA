@@ -2482,13 +2482,14 @@ button.editar:active::before {
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label for="localSelect">Local:</label>
-                                <select id="localSelect" required>
-                                    <option value="">Selecione...</option>
-                                    <option value="Lundin">Lundin</option>
-                                    <option value="R&D">R&D</option>
-                                </select>
-                            </div>
+    <label for="localSelect">Local:</label>
+    <select id="localSelect" required>
+        <option value="">Selecione...</option>
+        <option value="Lundin">Lundin</option>
+        <option value="R&D">R&D</option>
+        <option value="U&M">U&M</option>
+    </select>
+</div>
                         </div>
                         <div class="form-group">
                             <label for="atribuidoASelect">Atribuir a:</label>
@@ -2684,11 +2685,12 @@ button.editar:active::before {
                             <select id="mindmapFuncFilter" onchange="filterMindmap()">
                                 <option value="todos">Todos os Funcionários</option>
                             </select>
-                            <select id="mindmapLocalFilter" onchange="filterMindmap()">
-                                <option value="todos">Todos os Locais</option>
-                                <option value="Lundin">Lundin</option>
-                                <option value="R&D">R&D</option>
-                            </select>
+                           <select id="mindmapLocalFilter" onchange="filterMindmap()">
+    <option value="todos">Todos os Locais</option>
+    <option value="Lundin">Lundin</option>
+    <option value="R&D">R&D</option>
+    <option value="U&M">U&M</option>
+</select>
                             <select id="mindmapSort" onchange="sortMindmap()">
                                 <option value="prioridade">Ordenar por Prioridade</option>
                                 <option value="dataLimite">Ordenar por Data Limite</option>
@@ -2772,11 +2774,13 @@ button.editar:active::before {
                             <select id="colabFuncFilter" onchange="filterColabDemandas()">
                                 <option value="todos">Todos os Funcionários</option>
                             </select>
-                            <select id="colabLocalFilter" onchange="filterColabDemandas()">
-                                <option value="todos">Todos os Locais</option>
-                                <option value="Lundin">Lundin</option>
-                                <option value="R&D">R&D</option>
-                            </select>
+                          <!-- Filtro de local em "Pendentes Colaboradores" -->
+<select id="colabLocalFilter" onchange="filterColabDemandas()">
+    <option value="todos">Todos os Locais</option>
+    <option value="Lundin">Lundin</option>
+    <option value="R&D">R&D</option>
+    <option value="U&M">U&M</option>
+</select>
                             <div class="date-filter-container">
                                 <div class="year-filter">
                                     <label for="colabYearFilter">Ano:</label>
@@ -2968,13 +2972,14 @@ button.editar:active::before {
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="editarLocal">Local:</label>
-                    <select id="editarLocal" required>
-                        <option value="">Selecione...</option>
-                        <option value="Lundin">Lundin</option>
-                        <option value="R&D">R&D</option>
-                    </select>
-                </div>
+    <label for="editarLocal">Local:</label>
+    <select id="editarLocal" required>
+        <option value="">Selecione...</option>
+        <option value="Lundin">Lundin</option>
+        <option value="R&D">R&D</option>
+        <option value="U&M">U&M</option>
+    </select>
+</div>
             </div>
             <div class="form-group">
                 <label for="editarAtribuidos">Atribuir a:</label>
@@ -3186,7 +3191,7 @@ button.editar:active::before {
 
 <script>
     // Variáveis globais
-  const usuarios = [
+ const usuarios = [
     { id: 1, nome: 'Ranielly Miranda De Souza', email: 'ranielly-s@zaminebrasil.com', nivel: 'Senior', pontos: 450, conquistas: ['star', 'fire', 'gold'], senha: '123456', role: 'funcionario' },
     { id: 2, nome: 'Girlene da Silva Nogueira', email: 'girlene-n@zaminebrasil.com', nivel: 'Pleno', pontos: 380, conquistas: ['star', 'silver'], senha: '123456', role: 'funcionario' },
     { id: 3, nome: 'Rafaela Cristine da Silva Martins', email: 'rafaela-m@zaminebrasil.com', nivel: 'Senior', pontos: 520, conquistas: ['star', 'fire', 'gold'], senha: '123456', role: 'funcionario' },
@@ -3195,11 +3200,14 @@ button.editar:active::before {
     { id: 7, nome: 'Marcelo Goncalves de Paula', email: 'marcelo-p@zaminebrasil.com', nivel: 'Senior', pontos: 480, conquistas: ['star', 'fire', 'gold'], senha: '123456', role: 'funcionario' },
     { id: 8, nome: 'Higor Ataides Macedo', email: 'higor-a@zaminebrasil.com', nivel: 'Junior', pontos: 250, conquistas: ['star'], senha: '123456', role: 'funcionario' },
     { id: 9, nome: 'Weslley Ferreira de Siqueira', email: 'weslley-f@zaminebrasil.com', nivel: 'Pleno', pontos: 360, conquistas: ['star', 'silver'], senha: '123456', role: 'funcionario' },
-    { id: 10, nome: 'Jadson Joao Romano', email: 'jadson-r@zaminebrasil.com', nivel: 'Senior', pontos: 440, conquistas: ['star', 'fire', 'gold'], senha: 'admin123', role: 'gestor' }, // Alterado para gestor
+    { id: 10, nome: 'Jadson Joao Romano', email: 'jadson-r@zaminebrasil.com', nivel: 'Senior', pontos: 440, conquistas: ['star', 'fire', 'gold'], senha: 'admin123', role: 'gestor' },
     { id: 11, nome: 'Charles de Andrade', email: 'charles-a@zaminebrasil.com', nivel: 'Pleno', pontos: 390, conquistas: ['star', 'silver'], senha: '123456', role: 'funcionario' },
     { id: 12, nome: 'Jose Carlos Rodrigues de Santana', email: 'jose-s@zaminebrasil.com', nivel: 'Junior', pontos: 220, conquistas: ['star'], senha: '123456', role: 'funcionario' },
     { id: 13, nome: 'Max Henrique Araujo', email: 'max-r@zaminebrasil.com', nivel: 'Pleno', pontos: 340, conquistas: ['star', 'silver'], senha: '123456', role: 'funcionario' },
-    { id: 14, nome: 'Emerson Luiz Alexandre', email: 'emerson-a@zaminebrasil.com', nivel: 'Senior', pontos: 460, conquistas: ['star', 'fire', 'gold'], senha: 'admin123', role: 'gestor' }, // Novo gestor adicionado
+    { id: 14, nome: 'Emerson Luiz Alexandre', email: 'emerson-a@zaminebrasil.com', nivel: 'Senior', pontos: 460, conquistas: ['star', 'fire', 'gold'], senha: 'admin123', role: 'gestor' },
+    // NOVOS USUÁRIOS - U&M
+    { id: 15, nome: 'Warlen Eduardo Pereira Silva', email: 'warlen-s@zaminebrasil.com', nivel: 'Pleno', pontos: 350, conquistas: ['star', 'silver'], senha: '123456', role: 'funcionario' },
+    { id: 16, nome: 'Cicero de Sousa Costa', email: 'cicero-c@zaminebrasil.com', nivel: 'Senior', pontos: 420, conquistas: ['star', 'fire', 'gold'], senha: '123456', role: 'funcionario' },
     { id: 99, nome: 'Gestor do Sistema', email: 'wallysson-s@zaminebrasil.com', nivel: 'Administrador', pontos: 999, conquistas: ['star', 'fire', 'gold', 'crown'], senha: 'admin123', role: 'gestor' },
     { id: 100, nome: 'Wallysson Diego Santiago Santos', email: 'wallysson-s@zaminebrasil.com', nivel: 'Coordenador', pontos: 999, conquistas: ['star', 'fire', 'gold', 'crown'], senha: 'admin123', role: 'gestor' },
     { id: 101, nome: 'Julio Cesar Sanches', email: 'julio-s@zaminebrasil.com', nivel: 'Gerente', pontos: 999, conquistas: ['star', 'fire', 'gold', 'crown'], senha: 'admin123', role: 'gestor' }
@@ -3248,6 +3256,7 @@ button.editar:active::before {
         inicializarReconhecimentoFala();
     });
 // Função global para aprovar demanda
+// Adicione esta lógica na função aprovarDemanda
 function aprovarDemanda(id, nomeFuncionario) {
     if (!confirm('Tem certeza que deseja aprovar esta demanda?')) return;
     
@@ -3263,10 +3272,11 @@ function aprovarDemanda(id, nomeFuncionario) {
                 carregarDadosDoServidor().then(() => {
                     showNotification('success', 'Demanda Aprovada', `Demanda de ${nomeFuncionario} foi aprovada com sucesso!`);
                     
-                    // Definir gestores por local
+                    // Definir gestores por local (ATUALIZADO)
                     const gestoresPorLocal = {
                         'R&D': ['jadson-r@zaminebrasil.com', 'emerson-a@zaminebrasil.com'],
-                        'Lundin': ['wallysson-s@zaminebrasil.com']
+                        'Lundin': ['wallysson-s@zaminebrasil.com'],
+                        'U&M': ['wallysson-s@zaminebrasil.com'] // Wallysson também é gestor do U&M
                     };
                     
                     // Obter gestores específicos para o local da demanda
@@ -3274,8 +3284,8 @@ function aprovarDemanda(id, nomeFuncionario) {
                     
                     const funcionario = usuarios.find(u => u.id === demanda.funcionarioId);
                     if (funcionario) {
-                        const assunto = encodeURIComponent(`Sua Demanda Foi Aprovada: ${demanda.nomeDemanda || demanda.descricao}`);
-                        const corpo = encodeURIComponent(`Prezado(a) ${nomeFuncionario},\n\nSua demanda foi analisada e aprovada.\n\n--- Detalhes ---\nNome: ${demanda.nomeDemanda || demanda.descricao}\nTAG: ${demanda.tag}\nLocal: ${demanda.local}\n\nParabéns pelo excelente trabalho!\n\nAtenciosamente,\nGestão`);
+                        const assunto = encodeURIComponent(`Sua Demanda Foi Aprovada: ${demanda.nomeDemanda}`);
+                        const corpo = encodeURIComponent(`Prezado(a) ${nomeFuncionario},\n\nSua demanda foi analisada e aprovada.\n\n--- Detalhes ---\nNome: ${demanda.nomeDemanda}\nTAG: ${demanda.tag}\nLocal: ${demanda.local}\n\nParabéns pelo excelente trabalho!\n\nAtenciosamente,\nGestão`);
                         
                         // Preparar emails
                         let emailsPara = funcionario.email;
@@ -3318,6 +3328,7 @@ function aprovarDemanda(id, nomeFuncionario) {
         });
     }
 }
+
 // Verificar se o usuário selecionado é gestor e mostrar/esconder filtro
 // Verificar se o usuário selecionado é gestor e mostrar/esconder filtro
 function checkIfGestor() {
@@ -4853,11 +4864,13 @@ function getDemandasDosColaboradores() {
     // Notificar partes interessadas sobre nova demanda
     // Notificar partes interessadas sobre nova demanda
 // Notificar partes interessadas sobre nova demanda
+// Notificar partes interessadas sobre nova demanda
 function notificarPartesInteressadasNovaDemanda(demanda) {
-    // Definir gestores por local
+    // Definir gestores por local (ATUALIZADO)
     const gestoresPorLocal = {
         'R&D': ['jadson-r@zaminebrasil.com', 'emerson-a@zaminebrasil.com'],
-        'Lundin': ['wallysson-s@zaminebrasil.com']
+        'Lundin': ['wallysson-s@zaminebrasil.com'],
+        'U&M': ['wallysson-s@zaminebrasil.com'] // Wallysson também é gestor do U&M
     };
     
     // Obter gestores específicos para o local da demanda
@@ -4896,8 +4909,8 @@ function notificarPartesInteressadasNovaDemanda(demanda) {
             window.open(mailtoLink, '_blank');
         }
     }
-}
-    // Abrir modal de resolução
+} 
+// Abrir modal de resolução
     function abrirModalResolucao(demandaId) {
         demandaResolucaoAtual = todasDemandas.find(d => d.id === demandaId);
         if (!demandaResolucaoAtual) return;
