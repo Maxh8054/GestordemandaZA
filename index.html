@@ -3876,6 +3876,33 @@ function inicializarCampoMultiSelect() {
     // Obter demandas para o usuário logado
     // Obter demandas para o usuário logado
 // Obter demandas para o usuário logado (atualizada para suportar visão geral/própria)
+// Obter demandas para visão geral (todas as demandas dos colaboradores)
+function getDemandasVisaoGeral() {
+    if (!usuarioLogado || usuarioLogado.role !== 'gestor') return [];
+    
+    // Para visão geral, mostrar todas as demandas que aparecem na aba "Pendentes Colaboradores"
+    // Isso inclui demandas criadas por gestores e atribuídas a funcionários ou outros gestores
+    // E também demandas criadas por funcionários
+    return todasDemandas.filter(demanda => {
+        // Verificar se o criador é um gestor
+        const criadorEGestor = usuarios.some(u => u.role === 'gestor' && u.id === demanda.funcionarioId);
+        
+        // Verificar se foi atribuída a funcionários ou gestores
+        const atribuidaAFuncionariosOuGestores = Array.isArray(demanda.atribuidos) && 
+            demanda.atribuidos.some(a => {
+                const usuario = usuarios.find(u => u.id === a.id);
+                return usuario && (usuario.role === 'funcionario' || usuario.role === 'gestor');
+            });
+        
+        // Manter compatibilidade com demandas criadas por funcionários
+        const criadaPorFuncionario = usuarios.some(u => u.role === 'funcionario' && u.id === demanda.funcionarioId);
+        
+        // Incluir todas as demandas que aparecem na aba de colaboradores
+        return (criadorEGestor && atribuidaAFuncionariosOuGestores) || criadaPorFuncionario;
+    });
+}
+
+// Obter demandas para o usuário logado (atualizada para suportar visão geral/própria)
 function getDemandasParaUsuarioLogado() {
     if (!usuarioLogado) return [];
     
@@ -3907,6 +3934,8 @@ function getDemandasParaUsuarioLogado() {
     }
     return [];
 }
+
+// Alternar tipo de visão
 // Alternar tipo de visão
 function changeViewType() {
     if (!usuarioLogado || usuarioLogado.role !== 'gestor') return;
@@ -3918,7 +3947,7 @@ function changeViewType() {
     sessionStorage.setItem('usuarioLogado', JSON.stringify(usuarioLogado));
     
     // Atualizar interface
-    const viewText = newViewType === 'geral' ? 'Visão Geral' : 'Própria';
+    const viewText = newViewType === 'geral' ? 'Visão Geral' : 'Próprio';
     showNotification('info', 'Visão Alterada', `Agora você está usando a ${viewText}`);
     
     // Recarregar dashboard e outras abas
