@@ -3903,6 +3903,7 @@ function getDemandasVisaoGeral() {
 }
 
 // Obter demandas para o usuário logado (atualizada para suportar visão geral/própria)
+// Obter demandas para o usuário logado (atualizada para suportar visão geral/própria)
 function getDemandasParaUsuarioLogado() {
     if (!usuarioLogado) return [];
     
@@ -3911,16 +3912,16 @@ function getDemandasParaUsuarioLogado() {
         return getDemandasVisaoGeral();
     }
     
-    // Para gestores em visão própria ou funcionários
+    // Para gestores em visão própria - mostrar APENAS suas demandas
     if (usuarioLogado.role === 'gestor') {
         return todasDemandas.filter(demanda => {
-            // Se a demanda foi criada pelo gestor E não foi atribuída a ninguém OU foi atribuída ao próprio gestor
+            // Mostrar apenas se:
+            // 1. A demanda foi criada pelo gestor
+            // 2. OU a demanda foi atribuída diretamente ao gestor
             const eCriador = demanda.funcionarioId === usuarioLogado.id;
-            const naoAtribuida = !demanda.atribuidos || demanda.atribuidos.length === 0;
             const atribuidaAMim = Array.isArray(demanda.atribuidos) && demanda.atribuidos.some(a => a.id === usuarioLogado.id);
             
-            // Mostrar se: (é criador E não foi atribuída) OU (foi atribuída a mim)
-            return (eCriador && naoAtribuida) || atribuidaAMim;
+            return eCriador || atribuidaAMim;
         });
     }
     
@@ -3937,6 +3938,7 @@ function getDemandasParaUsuarioLogado() {
 
 // Alternar tipo de visão
 // Alternar tipo de visão
+// Alternar tipo de visão
 function changeViewType() {
     if (!usuarioLogado || usuarioLogado.role !== 'gestor') return;
     
@@ -3946,9 +3948,26 @@ function changeViewType() {
     // Atualizar no sessionStorage
     sessionStorage.setItem('usuarioLogado', JSON.stringify(usuarioLogado));
     
-    // Atualizar interface
-    const viewText = newViewType === 'geral' ? 'Visão Geral' : 'Próprio';
-    showNotification('info', 'Visão Alterada', `Agora você está usando a ${viewText}`);
+    // Atualizar badge do usuário
+    const userBadge = document.getElementById('userBadge');
+    if (userBadge) {
+        const viewText = newViewType === 'geral' ? 'Visão Geral' : 'Própria';
+        userBadge.innerHTML = '<i class="fas fa-user-shield"></i> <span>' + usuarioLogado.nome + ' (Gestor - ' + viewText + ')</span>';
+    }
+    
+    // CONTROLAR VISIBILIDADE DA ABA "MINHAS DEMANDAS"
+    const pendentesTab = document.querySelector('.tab[onclick*="pendentes"]');
+    if (pendentesTab) {
+        if (newViewType === 'geral') {
+            // OCULTAR aba "Minhas Demandas" na visão geral
+            pendentesTab.style.display = 'none';
+            showNotification('info', 'Visão Geral', 'Aba "Minhas Demandas" ocultada. Use "Pendentes Colaboradores" para ver todas as demandas.');
+        } else {
+            // MOSTRAR aba "Minhas Demandas" na visão própria
+            pendentesTab.style.display = 'block';
+            showNotification('info', 'Visão Própria', 'Aba "Minhas Demandas" ativada com suas demandas.');
+        }
+    }
     
     // Recarregar dashboard e outras abas
     atualizarDashboard();
@@ -3957,6 +3976,7 @@ function changeViewType() {
 }
 
 // Atualizar função configurarInterfaceUsuario para mostrar o controle de visão
+// Configurar interface do usuário
 function configurarInterfaceUsuario() {
     const userBadge = document.getElementById('userBadge');
     const userName = document.getElementById('userName');
@@ -3984,6 +4004,19 @@ function configurarInterfaceUsuario() {
             document.getElementById('gestorActions2').style.display = 'flex';
             document.getElementById('gestorActions3').style.display = 'flex';
             document.getElementById('exportRankingBtn').style.display = 'inline-block';
+            
+            // CONTROLE DA ABA "MINHAS DEMANDAS" CONFORME A VISÃO
+            const pendentesTab = document.querySelector('.tab[onclick*="pendentes"]');
+            if (pendentesTab) {
+                if (usuarioLogado.viewType === 'geral') {
+                    // OCULTAR aba "Minhas Demandas" na visão geral
+                    pendentesTab.style.display = 'none';
+                } else {
+                    // MOSTRAR aba "Minhas Demandas" na visão própria
+                    pendentesTab.style.display = 'block';
+                }
+            }
+            
         } else {
             userBadge.innerHTML = '<i class="fas fa-user"></i> <span>' + usuarioLogado.nome + '</span>';
             
@@ -3993,30 +4026,39 @@ function configurarInterfaceUsuario() {
             }
         }
     }
-}
+}   
+// Obter demandas dos colaboradores
     // Obter demandas dos colaboradores
-    // Obter demandas dos colaboradores
+// Obter demandas dos colaboradores
+// Obter demandas dos colaboradores
 // Obter demandas dos colaboradores
 function getDemandasDosColaboradores() {
     if (!usuarioLogado || usuarioLogado.role !== 'gestor') return [];
     
-    // Para gestores, mostrar todas as demandas que foram criadas por gestores E atribuídas a funcionários ou outros gestores
+    // Para gestores, mostrar:
+    // 1. Demandas criadas por gestores e atribuídas a funcionários ou outros gestores
+    // 2. Demandas criadas por gestores e NÃO atribuídas (NOVO)
+    // 3. Demandas criadas por funcionários (mantido para compatibilidade)
     return todasDemandas.filter(demanda => {
         // Verificar se o criador é um gestor
         const criadorEGestor = usuarios.some(u => u.role === 'gestor' && u.id === demanda.funcionarioId);
         
-        // Verificar se foi atribuída a funcionários OU a outros gestores
+        // Verificar se foi atribuída a funcionários ou gestores
         const atribuidaAFuncionariosOuGestores = Array.isArray(demanda.atribuidos) && 
             demanda.atribuidos.some(a => {
                 const usuario = usuarios.find(u => u.id === a.id);
                 return usuario && (usuario.role === 'funcionario' || usuario.role === 'gestor');
             });
         
+        // Verificar se NÃO foi atribuída (para incluir demandas de gestores sem atribuição)
+        const naoAtribuida = !demanda.atribuidos || demanda.atribuidos.length === 0;
+        
         // Manter compatibilidade com demandas criadas por funcionários
         const criadaPorFuncionario = usuarios.some(u => u.role === 'funcionario' && u.id === demanda.funcionarioId);
         
-        // Mostrar se: (foi criada por gestor E atribuída a funcionários ou gestores) OU (foi criada por funcionário)
-        return (criadorEGestor && atribuidaAFuncionariosOuGestores) || criadaPorFuncionario;
+        // Mostrar se:
+        // (foi criada por gestor E (atribuída a alguém OU não atribuída)) OU (foi criada por funcionário)
+        return (criadorEGestor && (atribuidaAFuncionariosOuGestores || naoAtribuida)) || criadaPorFuncionario;
     });
 }
 
