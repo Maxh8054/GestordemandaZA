@@ -2006,6 +2006,41 @@ button.info:active::before {
     font-weight: bold;
     margin-left: 10px;
 }
+/* Botão de editar */
+button.editar {
+    background-color: var(--warning-color);
+    color: white;
+    padding: 5px 10px;
+    font-size: 14px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+button.editar:hover {
+    background-color: #e67e22;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+button.editar::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+button.editar:active::before {
+    width: 300px;
+    height: 300px;
+}
     </style>
 </head>
 <body>
@@ -2852,6 +2887,144 @@ button.info:active::before {
             <div class="form-group">
                 <button type="submit" class="success"><i class="fas fa-comment"></i> Adicionar Comentário</button>
                 <button type="button" class="secondary" onclick="closeModal('comentarioModal')"><i class="fas fa-times"></i> Cancelar</button>
+            </div>
+        </form>
+    </div>
+</div>
+<!-- Modal de Edição de Demanda -->
+<div id="editarDemandaModal" class="modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="closeModal('editarDemandaModal')">&times;</span>
+        <h2 id="editarDemandaModalTitle">Editar Demanda</h2>
+        <form id="editarDemandaForm">
+            <div class="form-group">
+                <label for="editarNomeDemanda">Nome da Demanda:</label>
+                <input type="text" id="editarNomeDemanda" required placeholder="Dê um nome claro para a demanda">
+            </div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="editarCategoria">Categoria:</label>
+                    <div class="category-search">
+                        <input type="text" id="editarCategoria" placeholder="Digite ou selecione uma categoria" required oninput="filtrarCategoriasEditar()">
+                        <button type="button" onclick="toggleCategoryDropdownEditar()"><i class="fas fa-chevron-down"></i></button>
+                        <div id="editarCategoryDropdown" class="category-dropdown">
+                            <div class="category-option" onclick="selectCategoryEditar('Comercial / Negócio')">Comercial / Negócio</div>
+                            <div class="category-option" onclick="selectCategoryEditar('Vendas')">Vendas</div>
+                            <div class="category-option" onclick="selectCategoryEditar('Pós-venda')">Pós-venda</div>
+                            <div class="category-option" onclick="selectCategoryEditar('Negociação')">Negociação</div>
+                            <div class="category-option" onclick="selectCategoryEditar('Proposta / Orçamento')">Proposta / Orçamento</div>
+                            <div class="category-option" onclick="selectCategoryEditar('Follow-up')">Follow-up</div>
+                            <div class="category-option" onclick="selectCategoryEditar('Fidelização')">Fidelização</div>
+                            <div class="category-option" onclick="selectCategoryEditar('Gestão / Administrativo')">Gestão / Administrativo</div>
+                            <div class="category-option" onclick="selectCategoryEditar('Planejamento')">Planejamento</div>
+                            <div class="category-option" onclick="selectCategoryEditar('Gestão de Projetos')">Gestão de Projetos</div>
+                            <div class="category-option" onclick="selectCategoryEditar('Alinhamento Interno')">Alinhamento Interno</div>
+                            <div class="category-option" onclick="selectCategoryEditar('Tomada de Decisão')">Tomada de Decisão</div>
+                            <div class="category-option" onclick="selectCategoryEditar('Auditoria')">Auditoria</div>
+                            <div class="category-option" onclick="selectCategoryEditar('Compliance')">Compliance</div>
+                            <div class="category-option" onclick="selectCategoryEditar('Técnico / Operacional')">Técnico / Operacional</div>
+                            <div class="category-option" onclick="selectCategoryEditar('Manutenção')">Manutenção</div>
+                            <div class="category-option" onclick="selectCategoryEditar('Implantação')">Implantação</div>
+                            <div class="category-option" onclick="selectCategoryEditar('Testes')">Testes</div>
+                            <div class="category-option" onclick="selectCategoryEditar('Correção de Erros')">Correção de Erros</div>
+                            <div class="category-option" onclick="selectCategoryEditar('Monitoramento')">Monitoramento</div>
+                            <div class="category-option" onclick="selectCategoryEditar('Otimização')">Otimização</div>
+                            <div class="category-option" onclick="selectCategoryEditar('TI / Dados')">TI / Dados</div>
+                            <div class="category-option" onclick="selectCategoryEditar('Análise de Dados')">Análise de Dados</div>
+                            <div class="category-option" onclick="selectCategoryEditar('Automação')">Automação</div>
+                            <div class="category-option" onclick="selectCategoryEditar('Integração de Sistemas')">Integração de Sistemas</div>
+                            <div class="category-option" onclick="selectCategoryEditar('Infraestrutura')">Infraestrutura</div>
+                            <div class="category-option" onclick="selectCategoryEditar('Segurança')">Segurança</div>
+                            <div class="category-option" onclick="selectCategoryEditar('Backup')">Backup</div>
+                            <div class="category-option" onclick="selectCategoryEditar('Comunicação')">Comunicação</div>
+                            <div class="category-option" onclick="selectCategoryEditar('Apresentação')">Apresentação</div>
+                            <div class="category-option" onclick="selectCategoryEditar('Treinamento')">Treinamento</div>
+                            <div class="category-option" onclick="selectCategoryEditar('Documentação')">Documentação</div>
+                            <div class="category-option" onclick="selectCategoryEditar('Feedback')">Feedback</div>
+                            <div class="category-option" onclick="selectCategoryEditar('Atendimento')">Atendimento</div>
+                            <div class="category-option" onclick="selectCategoryEditar('Outros')">Outros</div>
+                        </div>
+                    </div>
+                    <div id="editarCustomCategoryInput" class="custom-category-input">
+                        <input type="text" id="editarCustomCategory" placeholder="Digite uma nova categoria">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="editarPrioridade">Prioridade:</label>
+                    <select id="editarPrioridade" required>
+                        <option value="">Selecione...</option>
+                        <option value="Importante">Importante</option>
+                        <option value="Média">Média</option>
+                        <option value="Relevante">Relevante</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="editarComplexidade">Complexidade:</label>
+                    <select id="editarComplexidade" required>
+                        <option value="">Selecione...</option>
+                        <option value="Fácil">Fácil</option>
+                        <option value="Médio">Médio</option>
+                        <option value="Difícil">Difícil</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="editarLocal">Local:</label>
+                    <select id="editarLocal" required>
+                        <option value="">Selecione...</option>
+                        <option value="Lundin">Lundin</option>
+                        <option value="R&D">R&D</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="editarAtribuidos">Atribuir a:</label>
+                <div class="multi-select-container" id="editarAtribuidosContainer">
+                    <div class="multi-select-display" id="editarAtribuidosDisplay" onclick="toggleMultiSelectEditar('editarAtribuidos')">
+                        <span style="color: #999;">Clique para selecionar funcionários...</span>
+                    </div>
+                    <div class="multi-select-dropdown" id="editarAtribuidosDropdown">
+                        <!-- Opções serão preenchidas dinamicamente -->
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="editarDescricao">Descrição da Demanda:</label>
+                <textarea id="editarDescricao" rows="3" required placeholder="Descreva detalhadamente a demanda..."></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="editarDataLimite">Data Limite:</label>
+                <input type="date" id="editarDataLimite" readonly style="background: #f0f0f0; cursor: not-allowed;">
+                <small style="color: #666; display: block; margin-top: 5px;">
+                    <i class="fas fa-info-circle"></i> A data limite não pode ser alterada após a criação da demanda.
+                </small>
+            </div>
+            
+            <div class="checkbox-group">
+                <input type="checkbox" id="editarRotina" onchange="toggleRoutineFieldsEditar()">
+                <label for="editarRotina">Esta é uma tarefa de rotina</label>
+            </div>
+            
+            <div class="dias-semana-group" id="editarDiasSemanaGroup">
+                <label>Selecione os dias da semana:</label>
+                <div>
+                    <label><input type="checkbox" name="editarDiaSemana" value="0"> Domingo</label>
+                    <label><input type="checkbox" name="editarDiaSemana" value="1"> Segunda-feira</label>
+                    <label><input type="checkbox" name="editarDiaSemana" value="2"> Terça-feira</label>
+                    <label><input type="checkbox" name="editarDiaSemana" value="3"> Quarta-feira</label>
+                    <label><input type="checkbox" name="editarDiaSemana" value="4"> Quinta-feira</label>
+                    <label><input type="checkbox" name="editarDiaSemana" value="5"> Sexta-feira</label>
+                    <label><input type="checkbox" name="editarDiaSemana" value="6"> Sábado</label>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <button type="submit" class="success">
+                    <i class="fas fa-save"></i> Salvar Alterações
+                </button>
+                <button type="button" class="secondary" onclick="closeModal('editarDemandaModal')">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
             </div>
         </form>
     </div>
@@ -4437,27 +4610,33 @@ function getDemandasDosColaboradores() {
 
     // Fechar modal
     function closeModal(modalId) {
-        const modal = document.getElementById(modalId);
-        if (modal) {
-            modal.style.display = 'none';
-            if (modalId === 'resolucaoModal') {
-                document.getElementById('resolucaoForm').reset();
-                document.getElementById('anexosList').innerHTML = '';
-                demandaResolucaoAtual = null;
-            }
-            if (modalId === 'reprovacaoModal') {
-                document.getElementById('reprovacaoForm').reset();
-                document.getElementById('deadlineExtension').classList.remove('active');
-            }
-            if (modalId === 'noteModal') {
-                document.getElementById('noteForm').reset();
-            }
-            if (modalId === 'extendDeadlineModal') {
-                document.getElementById('extendDeadlineForm').reset();
-            }
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'none';
+        if (modalId === 'resolucaoModal') {
+            document.getElementById('resolucaoForm').reset();
+            document.getElementById('anexosList').innerHTML = '';
+            demandaResolucaoAtual = null;
+        }
+        if (modalId === 'reprovacaoModal') {
+            document.getElementById('reprovacaoForm').reset();
+            document.getElementById('deadlineExtension').classList.remove('active');
+        }
+        if (modalId === 'noteModal') {
+            document.getElementById('noteForm').reset();
+        }
+        if (modalId === 'extendDeadlineModal') {
+            document.getElementById('extendDeadlineForm').reset();
+        }
+        if (modalId === 'editarDemandaModal') {
+            document.getElementById('editarDemandaForm').reset();
+            document.getElementById('editarDiasSemanaGroup').style.display = 'none';
+            document.getElementById('editarCustomCategoryInput').style.display = 'none';
+            selectedUsersEditar = [];
+            demandaEdicaoAtual = null;
         }
     }
-
+}
     // Ação rápida
     function quickAction() {
         switchTab('nova');
@@ -5435,6 +5614,20 @@ function criarElementoDemandaAtrasada(demanda, isAtrasado = false) {
                 </button>
             ` : ''}
         </div>
+        // Na função criarElementoDemanda, adicione este botão nas ações:
+<div class="acoes-demandas">
+    ${eDono && (demanda.status === 'pendente' || demanda.status === 'reprovada' || demanda.status === 'atribuida_pendente_aceitacao') ? `
+        <button class="editar" onclick="abrirModalEditarDemanda(${demanda.id})" title="Editar Demanda">
+            <i class="fas fa-edit"></i>
+        </button>
+    ` : ''}
+    ${(eDono || eAtribuido) && (demanda.status === 'pendente' || demanda.status === 'reprovada') ? `
+        <button class="success" onclick="abrirModalResolucao(${demanda.id})" title="Resolver Demanda">
+            <i class="fas fa-tools"></i>
+        </button>
+    ` : ''}
+    // ... resto dos botões existentes ...
+</div>
     `;
     
     return div;
@@ -7322,7 +7515,218 @@ async function importarDemandas() {
     }
     // Variável global para armazenar a demanda atual para comentários
 let demandaComentarioAtual = null;
+// Adicione estas variáveis globais no início do arquivo
+let demandaEdicaoAtual = null;
+let selectedUsersEditar = [];
 
+// Adicione estas funções após as funções existentes
+
+// Função para abrir modal de edição
+function abrirModalEditarDemanda(demandaId) {
+    // ... código existente ...
+    
+    showModal('editarDemandaModal', `Editar Demanda: ${demanda.nomeDemanda}`);
+    
+    // Inicializar o multi-select após o modal abrir
+    setTimeout(() => {
+        inicializarMultiSelectEditar();
+    }, 100);
+}
+// Funções para o multi-select de edição
+function toggleMultiSelectEditar(id) {
+    const dropdown = document.getElementById(id + 'Dropdown');
+    dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+}
+
+function updateSelectedUsersEditar() {
+    const display = document.getElementById('editarAtribuidosDisplay');
+    if (selectedUsersEditar.length === 0) {
+        display.innerHTML = '<span style="color: #999;">Clique para selecionar funcionários...</span>';
+    } else {
+        display.innerHTML = selectedUsersEditar.map(user => 
+            `<span class="selected-item">${user.nome} <i class="fas fa-times" onclick="removeUserEditar(${user.id})"></i></span>`
+        ).join('');
+    }
+}
+
+function removeUserEditar(userId) {
+    selectedUsersEditar = selectedUsersEditar.filter(user => user.id !== userId);
+    updateSelectedUsersEditar();
+    
+    // Atualizar o checkbox
+    const checkbox = document.getElementById(`editarUser_${userId}`);
+    if (checkbox) {
+        checkbox.checked = false;
+    }
+}
+
+// Funções para categoria de edição
+function filtrarCategoriasEditar() {
+    const input = document.getElementById('editarCategoria').value.toLowerCase();
+    const dropdown = document.getElementById('editarCategoryDropdown');
+    const options = dropdown.querySelectorAll('.category-option');
+    
+    options.forEach(option => {
+        const text = option.textContent.toLowerCase();
+        if (text.includes(input)) {
+            option.style.display = 'block';
+        } else {
+            option.style.display = 'none';
+        }
+    });
+    
+    if (input) {
+        dropdown.style.display = 'block';
+    }
+}
+
+function toggleCategoryDropdownEditar() {
+    const dropdown = document.getElementById('editarCategoryDropdown');
+    dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+}
+
+function selectCategoryEditar(category) {
+    document.getElementById('editarCategoria').value = category;
+    document.getElementById('editarCategoryDropdown').style.display = 'none';
+    
+    if (category === 'Outros') {
+        document.getElementById('editarCustomCategoryInput').style.display = 'block';
+        document.getElementById('editarCustomCategory').focus();
+    } else {
+        document.getElementById('editarCustomCategoryInput').style.display = 'none';
+    }
+}
+
+function toggleRoutineFieldsEditar() {
+    const checkbox = document.getElementById('editarRotina');
+    const diasSemanaGroup = document.getElementById('editarDiasSemanaGroup');
+    
+    if (diasSemanaGroup) {
+        diasSemanaGroup.style.display = checkbox.checked ? 'block' : 'none';
+    }
+}
+
+// Event listener para o formulário de edição
+document.addEventListener('DOMContentLoaded', () => {
+    const editarDemandaForm = document.getElementById('editarDemandaForm');
+    if (editarDemandaForm) {
+        editarDemandaForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            await salvarDemandaEditada();
+        });
+    }
+});
+
+// Função para salvar a demanda editada
+async function salvarDemandaEditada() {
+    if (!demandaEdicaoAtual) return;
+    
+    const nomeDemanda = document.getElementById('editarNomeDemanda').value;
+    const categoria = document.getElementById('editarCategoria').value;
+    const prioridade = document.getElementById('editarPrioridade').value;
+    const complexidade = document.getElementById('editarComplexidade').value;
+    const descricao = document.getElementById('editarDescricao').value;
+    const local = document.getElementById('editarLocal').value;
+    const isRotina = document.getElementById('editarRotina').checked;
+    
+    if (!nomeDemanda || !categoria || !prioridade || !complexidade || !descricao || !local) {
+        showNotification('error', 'Erro', 'Por favor, preencha todos os campos obrigatórios');
+        return;
+    }
+    
+    let diasSemana = [];
+    if (isRotina) {
+        const checkboxes = document.querySelectorAll('input[name="editarDiaSemana"]:checked');
+        diasSemana = Array.from(checkboxes).map(cb => parseInt(cb.value));
+    }
+    
+    const dadosAtualizados = {
+        nomeDemanda,
+        categoria,
+        prioridade,
+        complexidade,
+        descricao,
+        local,
+        isRotina,
+        diasSemana,
+        atribuidos: selectedUsersEditar,
+        dataAtualizacao: new Date().toISOString()
+    };
+    
+    const sucesso = await atualizarDemandaNoServidor(demandaEdicaoAtual.id, dadosAtualizados);
+    
+    if (sucesso) {
+        await carregarDadosDoServidor();
+        showNotification('success', 'Demanda Atualizada', `A demanda "${nomeDemanda}" foi atualizada com sucesso!`);
+        closeModal('editarDemandaModal');
+        renderizarTodasAsAbas();
+        
+        // Notificar atribuídos se houver mudança
+        const atribuidosAtuais = demandaEdicaoAtual.atribuidos || [];
+        const novosAtribuidos = selectedUsersEditar.filter(novo => 
+            !atribuidosAtuais.some(atual => atual.id === novo.id)
+        );
+        
+        if (novosAtribuidos.length > 0) {
+            novosAtribuidos.forEach(atribuido => {
+                addUserNotification('info', 'Demanda Atualizada', 
+                    `A demanda "${nomeDemanda}" foi atualizada e você foi adicionado como atribuído.`, 
+                    { tag: demandaEdicaoAtual.tag }
+                );
+                
+                // Enviar email
+                const assunto = encodeURIComponent(`Demanda Atualizada: ${nomeDemanda}`);
+                const corpo = encodeURIComponent(`Prezado(a) ${atribuido.nome},\n\nA demanda "${nomeDemanda}" foi atualizada e você foi adicionado como atribuído.\n\n--- Detalhes da Demanda ---\nNome: ${nomeDemanda}\nDescrição: ${descricao}\nCategoria: ${categoria}\nPrioridade: ${prioridade}\nLocal: ${local}\nData Limite: ${new Date(demandaEdicaoAtual.dataLimite).toLocaleDateString('pt-BR')}\nTAG: ${demandaEdicaoAtual.tag}\n\nPor favor, acesse o sistema para mais detalhes.\n\nAtenciosamente,\nSistema de Gestão de Demandas`);
+                
+                window.open(`mailto:${atribuido.email}?subject=${assunto}&body=${corpo}`, '_blank');
+            });
+        }
+    }
+    
+    demandaEdicaoAtual = null;
+    selectedUsersEditar = [];
+}
+
+// Inicializar o multi-select de edição quando o modal abrir
+function inicializarMultiSelectEditar() {
+    const dropdown = document.getElementById('editarAtribuidosDropdown');
+    if (!dropdown) return;
+    
+    dropdown.innerHTML = '';
+    
+    usuarios.filter(u => u.role === 'funcionario' || u.role === 'gestor').forEach(usuario => {
+        const option = document.createElement('div');
+        option.className = 'multi-select-option';
+        
+        const icon = usuario.role === 'gestor' ? '<i class="fas fa-user-shield"></i> ' : '<i class="fas fa-user"></i> ';
+        const label = usuario.role === 'gestor' ? `${usuario.nome} (Gestor)` : usuario.nome;
+        
+        option.innerHTML = `
+            <input type="checkbox" id="editarUser_${usuario.id}" value="${usuario.id}">
+            <label for="editarUser_${usuario.id}">${icon}${label}</label>
+        `;
+        
+        option.addEventListener('click', function(e) {
+            if (e.target.tagName !== 'INPUT') {
+                const checkbox = this.querySelector('input[type="checkbox"]');
+                checkbox.checked = !checkbox.checked;
+            }
+            
+            if (checkbox.checked) {
+                const usuario = usuarios.find(u => u.id == checkbox.value);
+                if (usuario && !selectedUsersEditar.find(u => u.id === usuario.id)) {
+                    selectedUsersEditar.push(usuario);
+                }
+            } else {
+                selectedUsersEditar = selectedUsersEditar.filter(u => u.id != checkbox.value);
+            }
+            
+            updateSelectedUsersEditar();
+        });
+        
+        dropdown.appendChild(option);
+    });
+}
 // Função para abrir o modal de comentários
 function abrirModalComentario(demandaId) {
     const demanda = todasDemandas.find(d => d.id === demandaId);
