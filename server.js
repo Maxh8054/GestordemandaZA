@@ -21,7 +21,7 @@ app.use(express.static('.'));
 
 // Middleware de rate limiting simples
 const requestCounts = {};
-const RATE_LIMIT = 100; // máximo 100 requisições por minuto
+const RATE_LIMIT = 500; // máximo 100 requisições por minuto
 const WINDOW_MS = 60000; // 1 minuto
 
 app.use((req, res, next) => {
