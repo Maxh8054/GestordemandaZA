@@ -4200,28 +4200,25 @@ function getDemandasVisaoGeral() {
 // Obter demandas para o usuário logado (atualizada para suportar visão geral/própria)
 // Obter demandas para o usuário logado (atualizada para suportar visão geral/própria)
 // Obter demandas para o usuário logado (CORRIGIDA)
+// Obter demandas para o usuário logado (CORRIGIDA)
 function getDemandasParaUsuarioLogado() {
     if (!usuarioLogado) return [];
     
-    // Se for gestor e estiver em visão geral
+    // SE FOR GESTOR EM VISÃO GERAL - MOSTRAR TODAS AS DEMANDAS DO SISTEMA
     if (usuarioLogado.role === 'gestor' && usuarioLogado.viewType === 'geral') {
-        return getDemandasVisaoGeral();
+        return todasDemandas; // Retorna TODAS sem nenhum filtro
     }
     
-    // Para gestores em visão própria - mostrar APENAS suas demandas (como funcionário)
+    // Se for gestor em visão própria - mostrar apenas suas demandas
     if (usuarioLogado.role === 'gestor') {
         return todasDemandas.filter(demanda => {
-            // Mostrar apenas se:
-            // 1. A demanda foi criada pelo gestor
-            // 2. OU a demanda foi atribuída diretamente ao gestor
             const eCriador = demanda.funcionarioId === usuarioLogado.id;
             const atribuidaAMim = Array.isArray(demanda.atribuidos) && demanda.atribuidos.some(a => a.id === usuarioLogado.id);
-            
             return eCriador || atribuidaAMim;
         });
     }
     
-    // Para funcionários, as demandas que eles criaram ou que foram atribuídas a eles
+    // Para funcionários - suas demandas criadas ou atribuídas
     if (usuarioLogado.role === 'funcionario') {
         return todasDemandas.filter(demanda => {
             const eCriador = demanda.funcionarioId === usuarioLogado.id;
@@ -4231,7 +4228,6 @@ function getDemandasParaUsuarioLogado() {
     }
     return [];
 }
-
 // Alternar tipo de visão
 // Alternar tipo de visão
 // Alternar tipo de visão
@@ -4432,38 +4428,42 @@ function getDemandasFiltradas() {
 
 // Atualizar dashboard
     // Atualizar dashboard
+// Atualizar dashboard (CORRIGIDA)
 function atualizarDashboard() {
-    // IMPORTANTE: Usar a mesma lógica das abas
-    const demandasDoUsuario = getDemandasParaUsuarioLogado();
+    let demandasParaContar;
     
-    // Aplicar os mesmos filtros do dashboard
-    const periodo = document.getElementById('filtroPeriodo')?.value;
-    const categoria = document.getElementById('filtroCategoria')?.value;
-    const prioridade = document.getElementById('filtroPrioridade')?.value;
-    
-    let demandasFiltradas = [...demandasDoUsuario];
-    
-    // Aplicar filtro de período
-    if (periodo && periodo !== 'all') {
-        const diasAtras = parseInt(periodo);
-        const cutoffDate = new Date();
-        cutoffDate.setDate(cutoffDate.getDate() - diasAtras);
-        demandasFiltradas = demandasFiltradas.filter(d => new Date(d.dataCriacao) >= cutoffDate);
-    }
-    
-    // Aplicar filtro de categoria
-    if (categoria && categoria !== 'todas') {
-        demandasFiltradas = demandasFiltradas.filter(d => d.categoria === categoria);
-    }
-    
-    // Aplicar filtro de prioridade
-    if (prioridade && prioridade !== 'todas') {
-        demandasFiltradas = demandasFiltradas.filter(d => d.prioridade === prioridade);
+    // PARA O DASHBOARD DO GESTOR EM VISÃO GERAL - USAR TODAS AS DEMANDAS
+    if (usuarioLogado && usuarioLogado.role === 'gestor' && usuarioLogado.viewType === 'geral') {
+        demandasParaContar = todasDemandas; // TODAS as demandas do sistema
+        
+        // Aplicar apenas os filtros do dashboard (período, categoria, prioridade)
+        const periodo = document.getElementById('filtroPeriodo')?.value;
+        const categoria = document.getElementById('filtroCategoria')?.value;
+        const prioridade = document.getElementById('filtroPrioridade')?.value;
+        
+        if (periodo && periodo !== 'all') {
+            const diasAtras = parseInt(periodo);
+            const cutoffDate = new Date();
+            cutoffDate.setDate(cutoffDate.getDate() - diasAtras);
+            demandasParaContar = demandasParaContar.filter(d => new Date(d.dataCriacao) >= cutoffDate);
+        }
+        
+        if (categoria && categoria !== 'todas') {
+            demandasParaContar = demandasParaContar.filter(d => d.categoria === categoria);
+        }
+        
+        if (prioridade && prioridade !== 'todas') {
+            demandasParaContar = demandasParaContar.filter(d => d.prioridade === prioridade);
+        }
+        
+    } else {
+        // PARA FUNCIONÁRIOS E GESTORES EM VISÃO PRÓPRIA - Usar a lógica normal
+        demandasParaContar = getDemandasFiltradas();
     }
     
     // Contar usando as MESMAS regras das abas
-    const totalDemandas = demandasFiltradas.length;
-    const pendentes = demandasFiltradas.filter(d => 
+    const totalDemandas = demandasParaContar.length;
+    const pendentes = demandasParaContar.filter(d => 
         d.status === 'pendente' || 
         d.status === 'finalizado_pendente_aprovacao' || 
         d.status === 'reprovada' || 
@@ -4471,15 +4471,15 @@ function atualizarDashboard() {
         d.status === 'atribuida_pendente_aceitacao'
     ).length;
     
-    const atrasadas = demandasFiltradas.filter(d => {
+    const atrasadas = demandasParaContar.filter(d => {
         if (d.status === 'aprovada') return false;
         const dataLimite = new Date(d.dataLimite);
         const hoje = new Date();
         return dataLimite < hoje;
     }).length;
     
-    const aprovadas = demandasFiltradas.filter(d => d.status === 'aprovada').length;
-    const rotina = demandasFiltradas.filter(d => d.isRotina).length;
+    const aprovadas = demandasParaContar.filter(d => d.status === 'aprovada').length;
+    const rotina = demandasParaContar.filter(d => d.isRotina).length;
 
     // Atualizar os cards
     animateValue('totalDemandas', totalDemandas);
@@ -4487,8 +4487,36 @@ function atualizarDashboard() {
     animateValue('atrasadasCount', atrasadas);
     animateValue('aprovadasCount', aprovadas);
     animateValue('rotinaCount', rotina);
+    
+    // Log para debug
+    console.log('Dashboard atualizado:', {
+        totalDemandas,
+        pendentes,
+        atrasadas,
+        aprovadas,
+        rotina,
+        usuario: usuarioLogado?.nome,
+        visao: usuarioLogado?.viewType,
+        totalNoSistema: todasDemandas.length
+    });
 }
-    // Animar valor
+// Adicione após a função importarDemandas()
+function forcarAtualizacaoDashboardAposImportacao() {
+    // Forçar recarregamento dos dados do servidor
+    carregarDadosDoServidor().then(() => {
+        // Atualizar dashboard imediatamente
+        atualizarDashboard();
+        
+        // Forçar atualização das abas também
+        setTimeout(() => {
+            renderizarTodasAsAbas();
+            atualizarBadges();
+        }, 500);
+        
+        console.log('Dashboard e abas atualizadas após importação');
+    });
+}
+// Animar valor
     function animateValue(elementId, value) {
         const element = document.getElementById(elementId);
         if (!element) return;
@@ -6847,13 +6875,17 @@ async function importarDemandas() {
             if (savedToServerCount > 0) message += `${savedToServerCount} salva(s) no servidor. `;
             if (errorCount > 0) message += `${errorCount} com erro(s). `;
             
-            if (savedToServerCount > 0 && errorCount === 0) {
-                showNotification('success', 'Importação Concluída com Sucesso', message);
-            } else if (savedToServerCount > 0) {
-                showNotification('warning', 'Importação Concluída com Alertas', message);
-            } else {
-                showNotification('error', 'Falha na Importação', 'Nenhuma demanda foi salva. Verifique o console para detalhes.');
-            }
+           // No final da função importarDemandas(), substitua as linhas finais por:
+if (savedToServerCount > 0 && errorCount === 0) {
+    showNotification('success', 'Importação Concluída com Sucesso', message);
+    closeModal('importModal'); // Se tiver modal
+    forcarAtualizacaoDashboardAposImportacao(); // NOVA FUNÇÃO
+} else if (savedToServerCount > 0) {
+    showNotification('warning', 'Importação Concluída com Alertas', message);
+    forcarAtualizacaoDashboardAposImportacao(); // NOVA FUNÇÃO
+} else {
+    showNotification('error', 'Falha na Importação', 'Nenhuma demanda foi salva. Verifique o console para detalhes.');
+}
             
             fileInput.value = '';
 
