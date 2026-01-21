@@ -6722,6 +6722,7 @@ const content = `
     // Importar demandas
    // Modifique a função importarDemandas() para ficar assim:
 // Importar demandas
+// Importar demandas
 async function importarDemandas() {
     const fileInput = document.getElementById('importFile');
     if (!fileInput.files.length) {
@@ -6740,54 +6741,97 @@ async function importarDemandas() {
                 throw new Error("O arquivo JSON deve conter uma lista de demandas.");
             }
 
-            // Normaliza cada demanda importada ANTES de qualquer processamento
+            // Normalizar cada demanda importada
             const normalizedImportedData = importedData.map(demanda => normalizarDadosDemanda(demanda));
+
+            // Mostrar notificação de início com contagem
+            showNotification('info', 'Importação Iniciada', `Iniciando importação de ${normalizedImportedData.length} demanda(s)...`);
+
+            // Carregar demandas atuais primeiro
+            await carregarDadosDoServidor();
 
             let updatedCount = 0;
             let addedCount = 0;
             let skippedCount = 0;
             let savedToServerCount = 0;
+            let errorCount = 0;
 
-            // Mostrar notificação de início da importação
-            showNotification('info', 'Importação Iniciada', `Processando ${normalizedImportedData.length} demanda(s)...`);
+            // Processar em lotes menores para evitar timeout
+            const batchSize = 10; // Processar 10 de cada vez
+            const batches = [];
+            
+            for (let i = 0; i < normalizedImportedData.length; i += batchSize) {
+                batches.push(normalizedImportedData.slice(i, i + batchSize));
+            }
 
-            // Primeiro, vamos obter as demandas atuais do servidor para garantir que temos a lista mais recente
-            await carregarDadosDoServidor();
-
-            for (const demandaImportada of normalizedImportedData) {
-                const demandaExistente = todasDemandas.find(d => d.id === demandaImportada.id);
+            // Processar cada lote sequencialmente
+            for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+                const batch = batches[batchIndex];
                 
-                if (demandaExistente) {
-                    // Atualiza a demanda existente em todasDemandas
-                    const index = todasDemandas.findIndex(d => d.id === demandaImportada.id);
-                    if (index !== -1) {
-                        todasDemandas[index] = { ...todasDemandas[index], ...demandaImportada };
-                        updatedCount++;
-                    }
-                } else {
-                    // Adiciona nova demanda a todasDemandas
-                    if (!demandaImportada.id) {
-                        demandaImportada.id = Date.now() + Math.random();
-                    }
-                    
-                    if (!demandaImportada.tag) {
-                        demandaImportada.tag = `DEM-IMP-${Date.now()}`;
-                    }
-                    
-                    todasDemandas.push(demandaImportada);
-                    addedCount++;
-                }
+                // Mostrar progresso
+                showNotification('info', 'Importação em Andamento', 
+                    `Processando lote ${batchIndex + 1}/${batches.length} (${batch.length} demandas)...`);
 
-                // SALVAR NO SERVIDOR - Esta é a parte que faltava!
-                try {
-                    const sucesso = await salvarDemandaNoServidor(demandaImportada);
-                    if (sucesso) {
-                        savedToServerCount++;
+                // Processar lote atual
+                for (const demandaImportada of batch) {
+                    try {
+                        const demandaExistente = todasDemandas.find(d => d.id === demandaImportada.id);
+                        
+                        if (demandaExistente) {
+                            // Atualiza a demanda existente
+                            const index = todasDemandas.findIndex(d => d.id === demandaImportada.id);
+                            if (index !== -1) {
+                                todasDemandas[index] = { ...todasDemandas[index], ...demandaImportada };
+                                updatedCount++;
+                            }
+                        } else {
+                            // Adiciona nova demanda
+                            if (!demandaImportada.id) {
+                                demandaImportada.id = Date.now() + Math.random();
+                            }
+                            
+                            if (!demandaImportada.tag) {
+                                demandaImportada.tag = `DEM-IMP-${Date.now()}`;
+                            }
+                            
+                            todasDemandas.push(demandaImportada);
+                            addedCount++;
+                        }
+
+                        // SALVAR NO SERVIDOR com retry
+                        let retryCount = 0;
+                        const maxRetries = 3;
+                        let sucesso = false;
+                        
+                        while (retryCount < maxRetries && !sucesso) {
+                            try {
+                                sucesso = await salvarDemandaNoServidor(demandaImportada);
+                                if (sucesso) {
+                                    savedToServerCount++;
+                                }
+                                break;
+                            } catch (error) {
+                                retryCount++;
+                                console.error(`Tentativa ${retryCount} falhou para demanda ${demandaImportada.id}:`, error);
+                                if (retryCount < maxRetries) {
+                                    // Esperar um pouco antes de tentar novamente
+                                    await new Promise(resolve => setTimeout(resolve, 500));
+                                }
+                            }
+                        }
+                        
+                        if (!sucesso) {
+                            errorCount++;
+                        }
+
+                    } catch (error) {
+                        console.error('Erro ao processar demanda individual:', error);
+                        errorCount++;
                     }
-                } catch (error) {
-                    console.error('Erro ao salvar demanda importada no servidor:', error);
-                    skippedCount++;
                 }
+                
+                // Pequena pausa entre lotes para não sobrecarregar o servidor
+                await new Promise(resolve => setTimeout(resolve, 200));
             }
 
             // Força a atualização completa da interface
@@ -6801,12 +6845,14 @@ async function importarDemandas() {
             if (updatedCount > 0) message += `${updatedCount} demanda(s) atualizada(s). `;
             if (addedCount > 0) message += `${addedCount} nova(s) demanda(s) adicionada(s). `;
             if (savedToServerCount > 0) message += `${savedToServerCount} salva(s) no servidor. `;
-            if (skippedCount > 0) message += `${skippedCount} demanda(s) ignorada(s) por erro.`;
+            if (errorCount > 0) message += `${errorCount} com erro(s). `;
             
-            if (savedToServerCount > 0) {
+            if (savedToServerCount > 0 && errorCount === 0) {
                 showNotification('success', 'Importação Concluída com Sucesso', message);
-            } else {
+            } else if (savedToServerCount > 0) {
                 showNotification('warning', 'Importação Concluída com Alertas', message);
+            } else {
+                showNotification('error', 'Falha na Importação', 'Nenhuma demanda foi salva. Verifique o console para detalhes.');
             }
             
             fileInput.value = '';
@@ -6822,8 +6868,8 @@ async function importarDemandas() {
     };
 
     reader.readAsText(file);
-}
-    // Mapa Mental - Funções atualizadas
+} 
+// Mapa Mental - Funções atualizadas
     function atualizarMindmap() {
         const mindmapArea = document.getElementById('mindmapArea');
         if (!mindmapArea) return;
