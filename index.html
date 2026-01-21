@@ -4087,24 +4087,73 @@ function inicializarCampoMultiSelect() {
     }
 
     // Atualizar badges
-    function atualizarBadges() {
-        const pendentes = getDemandasParaUsuarioLogado().filter(d => d.status === 'pendente' || d.status === 'finalizado_pendente_aprovacao' || d.status === 'atribuida_pendente_aceitacao').length;
-        const analise = getDemandasParaUsuarioLogado().filter(d => d.status === 'finalizado_pendente_aprovacao').length;
-        const atrasadas = getDemandasParaUsuarioLogado().filter(d => {
-            if (d.status === 'aprovada') return false;
-            const dataLimite = new Date(d.dataLimite);
-            const hoje = new Date();
-            return dataLimite < hoje;
-        }).length;
-        const concluidas = getDemandasParaUsuarioLogado().filter(d => d.status === 'aprovada').length;
-        const colabPendentes = getDemandasDosColaboradores().filter(d => d.status === 'pendente' || d.status === 'finalizado_pendente_aprovacao' || d.status === 'atribuida_pendente_aceitacao').length;
-
-        updateBadge('pendingBadge', pendentes);
-        updateBadge('analysisBadge', analise);
-        updateBadge('overdueBadge', atrasadas);
-        updateBadge('completedBadge', concluidas);
-        updateBadge('colabPendingBadge', colabPendentes);
+   // Atualizar badges (GARANTINDO CONSISTÊNCIA COM O DASHBOARD)
+function atualizarBadges() {
+    // Usar exatamente a mesma lógica do dashboard
+    let demandasBase;
+    
+    if (usuarioLogado && usuarioLogado.role === 'gestor' && usuarioLogado.viewType === 'geral') {
+        demandasBase = todasDemandas;
+    } else {
+        demandasBase = getDemandasParaUsuarioLogado();
     }
+    
+    // Aplicar mesmos filtros do dashboard
+    const periodo = document.getElementById('filtroPeriodo')?.value;
+    const categoria = document.getElementById('filtroCategoria')?.value;
+    const prioridade = document.getElementById('filtroPrioridade')?.value;
+    
+    let demandasFiltradas = [...demandasBase];
+    
+    if (periodo && periodo !== 'all') {
+        const diasAtras = parseInt(periodo);
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - diasAtras);
+        demandasFiltradas = demandasFiltradas.filter(d => new Date(d.dataCriacao) >= cutoffDate);
+    }
+    
+    if (categoria && categoria !== 'todas') {
+        demandasFiltradas = demandasFiltradas.filter(d => d.categoria === categoria);
+    }
+    
+    if (prioridade && prioridade !== 'todas') {
+        demandasFiltradas = demandasFiltradas.filter(d => d.prioridade === prioridade);
+    }
+    
+    // Contar usando EXATAMENTE a mesma lógica
+    const pendentes = demandasFiltradas.filter(d => 
+        d.status === 'pendente' || 
+        d.status === 'finalizado_pendente_aprovacao' || 
+        d.status === 'reprovada' || 
+        d.status === 'reprovada_pelo_atribuido' ||
+        d.status === 'atribuida_pendente_aceitacao'
+    ).length;
+    
+    const analise = demandasFiltradas.filter(d => d.status === 'finalizado_pendente_aprovacao').length;
+    const atrasadas = demandasFiltradas.filter(d => {
+        if (d.status === 'aprovada') return false;
+        const dataLimite = new Date(d.dataLimite);
+        const hoje = new Date();
+        return dataLimite < hoje;
+    }).length;
+    const concluidas = demandasFiltradas.filter(d => d.status === 'aprovada').length;
+    const colabPendentes = getDemandasDosColaboradores().filter(d => 
+        d.status === 'pendente' || 
+        d.status === 'finalizado_pendente_aprovacao' || 
+        d.status === 'reprovada' || 
+        d.status === 'reprovada_pelo_atribuido' ||
+        d.status === 'atribuida_pendente_aceitacao'
+    ).length;
+
+    // Atualizar badges
+    updateBadge('pendingBadge', pendentes);
+    updateBadge('analysisBadge', analise);
+    updateBadge('overdueBadge', atrasadas);
+    updateBadge('completedBadge', concluidas);
+    updateBadge('colabPendingBadge', colabPendentes);
+    
+    console.log('🏷️ Badges atualizados com mesma contagem do dashboard');
+}
 
     function updateBadge(badgeId, count) {
         const badge = document.getElementById(badgeId);
@@ -4429,41 +4478,49 @@ function getDemandasFiltradas() {
 // Atualizar dashboard
     // Atualizar dashboard
 // Atualizar dashboard (CORRIGIDA)
+// Atualizar dashboard (USANDO EXATAMENTE A MESMA LÓGICA DAS ABAS)
 function atualizarDashboard() {
-    let demandasParaContar;
+    console.log('🔄 Atualizando dashboard com contagem idêntica às abas...');
     
-    // PARA O DASHBOARD DO GESTOR EM VISÃO GERAL - USAR TODAS AS DEMANDAS
+    // Para gestor em visão geral, usar TODAS as demandas do sistema
+    // Para funcionários e gestores em visão própria, usar apenas as demandas deles
+    let demandasBase;
+    
     if (usuarioLogado && usuarioLogado.role === 'gestor' && usuarioLogado.viewType === 'geral') {
-        demandasParaContar = todasDemandas; // TODAS as demandas do sistema
-        
-        // Aplicar apenas os filtros do dashboard (período, categoria, prioridade)
-        const periodo = document.getElementById('filtroPeriodo')?.value;
-        const categoria = document.getElementById('filtroCategoria')?.value;
-        const prioridade = document.getElementById('filtroPrioridade')?.value;
-        
-        if (periodo && periodo !== 'all') {
-            const diasAtras = parseInt(periodo);
-            const cutoffDate = new Date();
-            cutoffDate.setDate(cutoffDate.getDate() - diasAtras);
-            demandasParaContar = demandasParaContar.filter(d => new Date(d.dataCriacao) >= cutoffDate);
-        }
-        
-        if (categoria && categoria !== 'todas') {
-            demandasParaContar = demandasParaContar.filter(d => d.categoria === categoria);
-        }
-        
-        if (prioridade && prioridade !== 'todas') {
-            demandasParaContar = demandasParaContar.filter(d => d.prioridade === prioridade);
-        }
-        
+        demandasBase = todasDemandas; // TODAS as demandas para gestor em visão geral
+        console.log('👑 Gestor visão geral - total de demandas:', demandasBase.length);
     } else {
-        // PARA FUNCIONÁRIOS E GESTORES EM VISÃO PRÓPRIA - Usar a lógica normal
-        demandasParaContar = getDemandasFiltradas();
+        demandasBase = getDemandasParaUsuarioLogado(); // Demandas do usuário
+        console.log('👤 Visão própria - total de demandas:', demandasBase.length);
     }
     
-    // Contar usando as MESMAS regras das abas
-    const totalDemandas = demandasParaContar.length;
-    const pendentes = demandasParaContar.filter(d => 
+    // Aplicar filtros do dashboard (período, categoria, etc.)
+    const periodo = document.getElementById('filtroPeriodo')?.value;
+    const categoria = document.getElementById('filtroCategoria')?.value;
+    const prioridade = document.getElementById('filtroPrioridade')?.value;
+    
+    let demandasFiltradas = [...demandasBase];
+    
+    if (periodo && periodo !== 'all') {
+        const diasAtras = parseInt(periodo);
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - diasAtras);
+        demandasFiltradas = demandasFiltradas.filter(d => new Date(d.dataCriacao) >= cutoffDate);
+    }
+    
+    if (categoria && categoria !== 'todas') {
+        demandasFiltradas = demandasFiltradas.filter(d => d.categoria === categoria);
+    }
+    
+    if (prioridade && prioridade !== 'todas') {
+        demandasFiltradas = demandasFiltradas.filter(d => d.prioridade === prioridade);
+    }
+    
+    console.log('Demandas após filtros:', demandasFiltradas.length);
+    
+    // CONTAGEM USANDO EXATAMENTE A MESMA LÓGICA DAS ABAS
+    // Pendentes = mesma lógica da aba "Minhas Demandas"
+    const pendentes = demandasFiltradas.filter(d => 
         d.status === 'pendente' || 
         d.status === 'finalizado_pendente_aprovacao' || 
         d.status === 'reprovada' || 
@@ -4471,16 +4528,35 @@ function atualizarDashboard() {
         d.status === 'atribuida_pendente_aceitacao'
     ).length;
     
-    const atrasadas = demandasParaContar.filter(d => {
+    // Análise = mesma lógica da aba "Análise"
+    const analise = demandasFiltradas.filter(d => d.status === 'finalizado_pendente_aprovacao').length;
+    
+    // Atrasadas = mesma lógica da aba "Atrasadas"
+    const atrasadas = demandasFiltradas.filter(d => {
         if (d.status === 'aprovada') return false;
         const dataLimite = new Date(d.dataLimite);
         const hoje = new Date();
         return dataLimite < hoje;
     }).length;
     
-    const aprovadas = demandasParaContar.filter(d => d.status === 'aprovada').length;
-    const rotina = demandasParaContar.filter(d => d.isRotina).length;
-
+    // Concluídas = mesma lógica da aba "Concluídas"
+    const aprovadas = demandasFiltradas.filter(d => d.status === 'aprovada').length;
+    
+    // Rotina = mesma lógica da aba "Tarefas de Rotina"
+    const rotina = demandasFiltradas.filter(d => d.isRotina).length;
+    
+    // Total = soma de todas (como no dashboard)
+    const totalDemandas = demandasFiltradas.length;
+    
+    console.log('📊 Contagem final (mesma lógica das abas):', {
+        totalDemandas,
+        pendentes,
+        analise,
+        atrasadas,
+        aprovadas,
+        rotina
+    });
+    
     // Atualizar os cards
     animateValue('totalDemandas', totalDemandas);
     animateValue('pendentesCount', pendentes);
@@ -4488,17 +4564,7 @@ function atualizarDashboard() {
     animateValue('aprovadasCount', aprovadas);
     animateValue('rotinaCount', rotina);
     
-    // Log para debug
-    console.log('Dashboard atualizado:', {
-        totalDemandas,
-        pendentes,
-        atrasadas,
-        aprovadas,
-        rotina,
-        usuario: usuarioLogado?.nome,
-        visao: usuarioLogado?.viewType,
-        totalNoSistema: todasDemandas.length
-    });
+    console.log('✅ Dashboard atualizado - números idênticos às abas!');
 }
 // Adicione após a função importarDemandas()
 function forcarAtualizacaoDashboardAposImportacao() {
@@ -6734,19 +6800,30 @@ const content = `
     }
 
     // Renderizar todas as abas
-  function renderizarTodasAsAbas() {
+ // Renderizar todas as abas (ORDEM CORRETA)
+function renderizarTodasAsAbas() {
+    console.log('🔄 Renderizando todas as abas...');
+    
+    // 1. Primeiro atualizar o dashboard (que agora usa a mesma lógica)
+    atualizarDashboard();
+    
+    // 2. Depois atualizar os badges (que usam a mesma lógica)
+    atualizarBadges();
+    
+    // 3. Renderizar as abas individuais
     renderizarDemandas();
     renderizarAnalise();
     renderizarAtrasadas();
     renderizarAprovadas();
     renderizarPendentesColaboradores();
     renderizarCobranca();
-    atualizarBadges();  // Garanta que esta linha esteja presente
-    atualizarDashboard();
+    
+    // 4. Atualizar outras partes
     atualizarRanking();
     atualizarGraficos();
+    
+    console.log('✅ Todas as abas renderizadas com contagem consistente!');
 }
-
     // Importar demandas
    // Modifique a função importarDemandas() para ficar assim:
 // Importar demandas
