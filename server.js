@@ -1,4 +1,4 @@
-// server.js - Versão Completa com Suporte às Novas Funcionalidades
+// server.js - Versão Completa com Suporte às Novas Funcionalidades e Correções
 const express = require('express');
 const cors = require('cors');
 const sqlite3 = require('sqlite3').verbose();
@@ -16,13 +16,42 @@ app.use(cors({
     credentials: true
 }));
 
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '50mb' })); // Aumentado para 50mb para importações grandes
 app.use(express.static('.'));
+
+// Middleware de rate limiting simples
+const requestCounts = {};
+const RATE_LIMIT = 100; // máximo 100 requisições por minuto
+const WINDOW_MS = 60000; // 1 minuto
+
+app.use((req, res, next) => {
+    const key = req.ip;
+    const now = Date.now();
+    
+    if (!requestCounts[key]) {
+        requestCounts[key] = { count: 0, resetTime: now + WINDOW_MS };
+    }
+    
+    if (now > requestCounts[key].resetTime) {
+        requestCounts[key] = { count: 0, resetTime: now + WINDOW_MS };
+    }
+    
+    requestCounts[key].count++;
+    
+    if (requestCounts[key].count > RATE_LIMIT) {
+        return res.status(429).json({ 
+            success: false, 
+            error: 'Muitas requisições. Por favor, aguarde um momento.' 
+        });
+    }
+    
+    next();
+});
 
 // Middleware de logging simples
 app.use((req, res, next) => {
     const timestamp = new Date().toISOString();
-    console.log(`[${timestamp}] ${req.method} ${req.url}`);
+    console.log(`[${timestamp}] ${req.method} ${req.url} - IP: ${req.ip}`);
     next();
 });
 
@@ -42,6 +71,8 @@ const db = new sqlite3.Database(DB_FILE, (err) => {
 
 // Habilitar chaves estrangeiras
 db.run('PRAGMA foreign_keys = ON');
+// Configurar timeout maior para operações longas
+db.run('PRAGMA busy_timeout = 30000'); // 30 segundos
 
 // Função para inicializar o banco de dados
 function inicializarBancoDados() {
@@ -116,7 +147,8 @@ function criarIndices() {
         'CREATE INDEX IF NOT EXISTS idx_dataLimite ON demandas(dataLimite)',
         'CREATE INDEX IF NOT EXISTS idx_tag ON demandas(tag)',
         'CREATE INDEX IF NOT EXISTS idx_categoria ON demandas(categoria)',
-        'CREATE INDEX IF NOT EXISTS idx_prioridade ON demandas(prioridade)'
+        'CREATE INDEX IF NOT EXISTS idx_prioridade ON demandas(prioridade)',
+        'CREATE INDEX IF NOT EXISTS idx_dataCriacao ON demandas(dataCriacao)'
     ];
 
     let completed = 0;
@@ -233,16 +265,16 @@ function inserirUsuariosPadrao() {
         { id: 7, nome: 'Marcelo Goncalves de Paula', email: 'marcelo-p@zaminebrasil.com', nivel: 'Senior', pontos: 480, conquistas: '["star", "fire", "gold"]', senha: '123456', role: 'funcionario' },
         { id: 8, nome: 'Higor Ataides Macedo', email: 'higor-a@zaminebrasil.com', nivel: 'Junior', pontos: 250, conquistas: '["star"]', senha: '123456', role: 'funcionario' },
         { id: 9, nome: 'Weslley Ferreira de Siqueira', email: 'weslley-f@zaminebrasil.com', nivel: 'Pleno', pontos: 360, conquistas: '["star", "silver"]', senha: '123456', role: 'funcionario' },
-        { id: 10, nome: 'Jadson Joao Romano', email: 'jadson-r@zaminebrasil.com', nivel: 'Senior', pontos: 440, conquistas: '["star", "fire", "gold"]', senha: 'admin123', role: 'gestor' }, // Alterado para gestor
+        { id: 10, nome: 'Jadson Joao Romano', email: 'jadson-r@zaminebrasil.com', nivel: 'Senior', pontos: 440, conquistas: '["star", "fire", "gold"]', senha: 'admin123', role: 'gestor' },
         { id: 11, nome: 'Charles de Andrade', email: 'charles-a@zaminebrasil.com', nivel: 'Pleno', pontos: 390, conquistas: '["star", "silver"]', senha: '123456', role: 'funcionario' },
         { id: 12, nome: 'Jose Carlos Rodrigues de Santana', email: 'jose-s@zaminebrasil.com', nivel: 'Junior', pontos: 220, conquistas: '["star"]', senha: '123456', role: 'funcionario' },
         { id: 13, nome: 'Max Henrique Araujo', email: 'max-r@zaminebrasil.com', nivel: 'Pleno', pontos: 340, conquistas: '["star", "silver"]', senha: '123456', role: 'funcionario' },
-        { id: 14, nome: 'Emerson Luiz Alexandre', email: 'emerson-a@zaminebrasil.com', nivel: 'Senior', pontos: 460, conquistas: '["star", "fire", "gold"]', senha: 'admin123', role: 'gestor' }, // Novo gestor adicionado
+        { id: 14, nome: 'Emerson Luiz Alexandre', email: 'emerson-a@zaminebrasil.com', nivel: 'Senior', pontos: 460, conquistas: '["star", "fire", "gold"]', senha: 'admin123', role: 'gestor' },
         { id: 99, nome: 'Gestor do Sistema', email: 'wallysson-s@zaminebrasil.com', nivel: 'Administrador', pontos: 999, conquistas: '["star", "fire", "gold", "crown"]', senha: 'admin123', role: 'gestor' },
         { id: 100, nome: 'Wallysson Diego Santiago Santos', email: 'wallysson-s@zaminebrasil.com', nivel: 'Coordenador', pontos: 999, conquistas: '["star", "fire", "gold", "crown"]', senha: 'admin123', role: 'gestor' },
         { id: 101, nome: 'Julio Cesar Sanches', email: 'julio-s@zaminebrasil.com', nivel: 'Gerente', pontos: 999, conquistas: '["star", "fire", "gold", "crown"]', senha: 'admin123', role: 'gestor' },
         { id: 15, nome: 'Warlen Eduardo Pereira Silva', email: 'warlen-s@zaminebrasil.com', nivel: 'Pleno', pontos: 350, conquistas: '["star", "silver"]', senha: '123456', role: 'funcionario' },
-    { id: 16, nome: 'Cicero de Sousa Costa', email: 'cicero-c@zaminebrasil.com', nivel: 'Senior', pontos: 420, conquistas: '["star", "fire", "gold"]', senha: '123456', role: 'funcionario' },
+        { id: 16, nome: 'Cicero de Sousa Costa', email: 'cicero-c@zaminebrasil.com', nivel: 'Senior', pontos: 420, conquistas: '["star", "fire", "gold"]', senha: '123456', role: 'funcionario' },
     ];
 
     let inseridos = 0;
@@ -839,6 +871,149 @@ app.post('/api/demandas/:id/reassign', (req, res) => {
     });
 });
 
+// POST /api/demandas/batch - Importação em lote (NOVA E MELHORADA)
+app.post('/api/demandas/batch', (req, res) => {
+    const { demandas } = req.body;
+    
+    if (!Array.isArray(demandas)) {
+        return res.status(400).json({ 
+            success: false, 
+            error: 'Formato inválido. Envie um array de demandas.' 
+        });
+    }
+    
+    console.log(`Iniciando importação em lote de ${demandas.length} demandas...`);
+    
+    let successCount = 0;
+    let errorCount = 0;
+    const errors = [];
+    const results = [];
+    
+    // Processar em lote com transação
+    db.serialize(() => {
+        db.run('BEGIN TRANSACTION', (err) => {
+            if (err) {
+                console.error('Erro ao iniciar transação:', err);
+                return res.status(500).json({ 
+                    success: false, 
+                    error: 'Erro ao iniciar transação do banco de dados' 
+                });
+            }
+            
+            // Processar cada demanda
+            demandas.forEach((demanda, index) => {
+                try {
+                    const dadosNormalizados = normalizarDadosDemanda(demanda);
+                    
+                    // Garantir ID único se não existir
+                    if (!dadosNormalizados.id) {
+                        dadosNormalizados.id = Date.now() + Math.random();
+                    }
+                    
+                    // Garantir TAG única se não existir
+                    if (!dadosNormalizados.tag) {
+                        dadosNormalizados.tag = `DEM-IMP-${Date.now()}-${index}`;
+                    }
+                    
+                    const sql = `
+                    INSERT OR REPLACE INTO demandas
+                    (id, funcionarioId, nomeFuncionario, emailFuncionario, categoria, prioridade, complexidade, 
+                     descricao, local, dataCriacao, dataLimite, status, isRotina, diasSemana, tag, comentarios, 
+                     comentarioGestor, dataConclusao, atribuidos, anexosCriacao, anexosResolucao, 
+                     comentarioReprovacaoAtribuicao, nomeDemanda, comentariosUsuarios)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    `;
+                    
+                    const params = [
+                        dadosNormalizados.id,
+                        dadosNormalizados.funcionarioId,
+                        dadosNormalizados.nomeFuncionario,
+                        dadosNormalizados.emailFuncionario,
+                        dadosNormalizados.categoria,
+                        dadosNormalizados.prioridade,
+                        dadosNormalizados.complexidade,
+                        dadosNormalizados.descricao,
+                        dadosNormalizados.local,
+                        dadosNormalizados.dataCriacao,
+                        dadosNormalizados.dataLimite,
+                        dadosNormalizados.status || 'pendente',
+                        dadosNormalizados.isRotina ? 1 : 0,
+                        JSON.stringify(dadosNormalizados.diasSemana),
+                        dadosNormalizados.tag,
+                        dadosNormalizados.comentarios || '',
+                        dadosNormalizados.comentarioGestor || '',
+                        dadosNormalizados.dataConclusao || null,
+                        JSON.stringify(dadosNormalizados.atribuidos),
+                        JSON.stringify(dadosNormalizados.anexosCriacao),
+                        JSON.stringify(dadosNormalizados.anexosResolucao),
+                        dadosNormalizados.comentarioReprovacaoAtribuicao || '',
+                        dadosNormalizados.nomeDemanda,
+                        JSON.stringify(dadosNormalizados.comentariosUsuarios || [])
+                    ];
+                    
+                    db.run(sql, params, function(err) {
+                        if (err) {
+                            errorCount++;
+                            const errorMsg = `Erro na demanda ${index + 1} (${dadosNormalizados.tag || 'sem tag'}): ${err.message}`;
+                            errors.push(errorMsg);
+                            console.error(errorMsg);
+                        } else {
+                            successCount++;
+                            results.push({
+                                id: dadosNormalizados.id,
+                                tag: dadosNormalizados.tag,
+                                nome: dadosNormalizados.nomeDemanda,
+                                status: 'success'
+                            });
+                        }
+                    });
+                    
+                } catch (error) {
+                    errorCount++;
+                    const errorMsg = `Erro ao processar demanda ${index + 1}: ${error.message}`;
+                    errors.push(errorMsg);
+                    console.error(errorMsg);
+                }
+            });
+            
+            // Comitar transação após processar todas
+            setTimeout(() => {
+                db.run('COMMIT', (err) => {
+                    if (err) {
+                        console.error('Erro no commit da transação:', err);
+                        return res.status(500).json({ 
+                            success: false, 
+                            error: 'Erro na transação do banco de dados' 
+                        });
+                    }
+                    
+                    console.log(`Importação concluída: ${successCount} sucesso(s), ${errorCount} erro(s)`);
+                    
+                    // Criar backup após importação bem-sucedida
+                    if (successCount > 0) {
+                        criarBackup('batch_import', (err, filename) => {
+                            if (err) {
+                                console.error('Erro ao criar backup pós-importação:', err);
+                            } else {
+                                console.log(`Backup pós-importação criado: ${filename}`);
+                            }
+                        });
+                    }
+                    
+                    res.json({
+                        success: true,
+                        message: `Importação concluída: ${successCount} sucesso(s), ${errorCount} erro(s)`,
+                        successCount,
+                        errorCount,
+                        errors: errors.slice(0, 20), // Retorna apenas os primeiros 20 erros
+                        results: results.slice(0, 50) // Retorna apenas os primeiros 50 resultados
+                    });
+                });
+            }, 1000); // Esperar 1 segundo para processar todas as inserções
+        });
+    });
+});
+
 // POST /api/feedbacks
 app.post('/api/feedbacks', (req, res) => {
     const { funcionarioId, tipo, mensagem } = req.body;
@@ -1287,6 +1462,7 @@ app.listen(PORT, () => {
     console.log(`📁 Diretório de backups: ${backupDir}`);
     console.log(`⏰ Backups automáticos a cada 6 horas`);
     console.log(`📊 Health check: http://localhost:${PORT}/health`);
+    console.log(`📦 Nova rota de importação em lote: POST /api/demandas/batch`);
 });
 
 // Tratamento de encerramento gracioso
