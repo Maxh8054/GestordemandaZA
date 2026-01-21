@@ -4381,13 +4381,17 @@ function getDemandasDosColaboradores() {
 }
 
     // Obter demandas filtradas
-   function getDemandasFiltradas() {
+  // Obter demandas filtradas
+function getDemandasFiltradas() {
+    // Começar com as mesmas demandas do usuário (como as abas)
     let demandasBase = getDemandasParaUsuarioLogado();
 
+    // Aplicar filtro de funcionário se não for "todos"
     if (filtroFuncionarioAtual !== 'todos') {
         demandasBase = demandasBase.filter(d => d.funcionarioId == filtroFuncionarioAtual);
     }
     
+    // Aplicar os outros filtros do dashboard
     const periodo = document.getElementById('filtroPeriodo')?.value;
     if (periodo && periodo !== 'all') {
         const diasAtras = parseInt(periodo);
@@ -4406,7 +4410,7 @@ function getDemandasDosColaboradores() {
         demandasBase = demandasBase.filter(d => d.prioridade === prioridade);
     }
     
-    // Aplicar filtro de comentários
+    // Aplicar filtro de comentários se existir
     if (window.filtroComentariosAtual) {
         if (window.filtroComentariosAtual === 'com-comentarios') {
             demandasBase = demandasBase.filter(d => 
@@ -4425,27 +4429,65 @@ function getDemandasDosColaboradores() {
     
     return demandasBase;
 }
+
+// Atualizar dashboard
     // Atualizar dashboard
-    function atualizarDashboard() {
-        const demandasFiltradas = getDemandasFiltradas();
-        const totalDemandas = demandasFiltradas.length;
-        const pendentes = demandasFiltradas.filter(d => d.status === 'pendente' || d.status === 'finalizado_pendente_aprovacao' || d.status === 'reprovada' || d.status === 'atribuida_pendente_aceitacao').length;
-        const atrasadas = demandasFiltradas.filter(d => {
-            if (d.status === 'aprovada') return false;
-            const dataLimite = new Date(d.dataLimite);
-            const hoje = new Date();
-            return dataLimite < hoje;
-        }).length;
-        const aprovadas = demandasFiltradas.filter(d => d.status === 'aprovada').length;
-        const rotina = demandasFiltradas.filter(d => d.isRotina).length;
-
-        animateValue('totalDemandas', totalDemandas);
-        animateValue('pendentesCount', pendentes);
-        animateValue('atrasadasCount', atrasadas);
-        animateValue('aprovadasCount', aprovadas);
-        animateValue('rotinaCount', rotina);
+function atualizarDashboard() {
+    // IMPORTANTE: Usar a mesma lógica das abas
+    const demandasDoUsuario = getDemandasParaUsuarioLogado();
+    
+    // Aplicar os mesmos filtros do dashboard
+    const periodo = document.getElementById('filtroPeriodo')?.value;
+    const categoria = document.getElementById('filtroCategoria')?.value;
+    const prioridade = document.getElementById('filtroPrioridade')?.value;
+    
+    let demandasFiltradas = [...demandasDoUsuario];
+    
+    // Aplicar filtro de período
+    if (periodo && periodo !== 'all') {
+        const diasAtras = parseInt(periodo);
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - diasAtras);
+        demandasFiltradas = demandasFiltradas.filter(d => new Date(d.dataCriacao) >= cutoffDate);
     }
+    
+    // Aplicar filtro de categoria
+    if (categoria && categoria !== 'todas') {
+        demandasFiltradas = demandasFiltradas.filter(d => d.categoria === categoria);
+    }
+    
+    // Aplicar filtro de prioridade
+    if (prioridade && prioridade !== 'todas') {
+        demandasFiltradas = demandasFiltradas.filter(d => d.prioridade === prioridade);
+    }
+    
+    // Contar usando as MESMAS regras das abas
+    const totalDemandas = demandasFiltradas.length;
+    const pendentes = demandasFiltradas.filter(d => 
+        d.status === 'pendente' || 
+        d.status === 'finalizado_pendente_aprovacao' || 
+        d.status === 'reprovada' || 
+        d.status === 'reprovada_pelo_atribuido' ||
+        d.status === 'atribuida_pendente_aceitacao'
+    ).length;
+    
+    const atrasadas = demandasFiltradas.filter(d => {
+        if (d.status === 'aprovada') return false;
+        const dataLimite = new Date(d.dataLimite);
+        const hoje = new Date();
+        return dataLimite < hoje;
+    }).length;
+    
+    const aprovadas = demandasFiltradas.filter(d => d.status === 'aprovada').length;
+    const rotina = demandasFiltradas.filter(d => d.isRotina).length;
 
+    // Atualizar os cards
+    animateValue('totalDemandas', totalDemandas);
+    animateValue('pendentesCount', pendentes);
+    animateValue('atrasadasCount', atrasadas);
+    animateValue('aprovadasCount', aprovadas);
+    animateValue('rotinaCount', rotina);
+}
     // Animar valor
     function animateValue(elementId, value) {
         const element = document.getElementById(elementId);
