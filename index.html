@@ -3190,6 +3190,34 @@ button.editar:active::before {
 </button>
 
 <script>
+    // Cache simples para evitar requisições duplicadas
+let cacheDemandas = null;
+let cacheTimestamp = 0;
+const CACHE_DURATION = 30000; // 30 segundos
+
+// Função para carregar com cache
+async function carregarDadosDoServidorComCache() {
+    const agora = Date.now();
+    
+    // Se o cache for válido, usar os dados em cache
+    if (cacheDemandas && (agora - cacheTimestamp) < CACHE_DURATION) {
+        console.log('📦 Usando dados em cache:', cacheDemandas.length);
+        todasDemandas = cacheDemandas;
+        return true;
+    }
+    
+    // Senão, carregar do servidor
+    const sucesso = await carregarDadosDoServidor();
+    
+    if (sucesso) {
+        // Atualizar cache
+        cacheDemandas = [...todasDemandas];
+        cacheTimestamp = agora;
+        console.log('💾 Cache atualizado com', cacheDemandas.length, 'demandas');
+    }
+    
+    return sucesso;
+}
     // Variáveis globais
  const usuarios = [
     { id: 1, nome: 'Ranielly Miranda De Souza', email: 'ranielly-s@zaminebrasil.com', nivel: 'Senior', pontos: 450, conquistas: ['star', 'fire', 'gold'], senha: '123456', role: 'funcionario' },
@@ -3989,34 +4017,59 @@ function inicializarCampoMultiSelect() {
     }
 
     // Carregar dados do servidor
-    async function carregarDadosDoServidor() {
+   // Carregar dados do servidor (COM RETRY PARA RATE LIMIT)
+async function carregarDadosDoServidor() {
+    const maxRetries = 3;
+    let retryCount = 0;
+    
+    while (retryCount < maxRetries) {
         try {
+            console.log(`🔄 Carregando dados do servidor (tentativa ${retryCount + 1}/${maxRetries})...`);
+            
             const response = await fetch(`${SERVER_URL}/api/demandas`);
-            if (response.ok) {
-                const demandasDoServidor = await response.json();
-                
-                // Normaliza os dados recebidos
-                const demandasNormalizadas = demandasDoServidor.map(demanda => normalizarDadosDemanda(demanda));
-                
-                demandasNormalizadas.forEach(demanda => {
-                    if (!todasDemandas.find(d => d.id === demanda.id)) {
-                        todasDemandas.push(demanda);
-                    }
-                });
-                
-            } else {
-                showNotification('error', 'Erro de Conexão', 'Não foi possível conectar ao servidor.');
+            
+            if (response.status === 429) {
+                // Se for rate limit, esperar e tentar novamente
+                const waitTime = Math.pow(2, retryCount) * 1000; // Exponential backoff
+                console.log(`⏳ Rate limit detectado, esperando ${waitTime}ms...`);
+                await new Promise(resolve => setTimeout(resolve, waitTime));
+                retryCount++;
+                continue;
             }
+            
+            if (!response.ok) {
+                throw new Error(`Erro HTTP: ${response.status}`);
+            }
+            
+            const demandasDoServidor = await response.json();
+            console.log('📡 Servidor retornou:', demandasDoServidor.length, 'demandas');
+            
+            if (!Array.isArray(demandasDoServidor)) {
+                throw new Error('Resposta inválida do servidor');
+            }
+            
+            // Normalizar e atualizar
+            todasDemandas = demandasDoServidor.map(demanda => normalizarDadosDemanda(demanda));
+            
+            console.log('✅ Dados carregados com sucesso:', todasDemandas.length);
+            return true;
+            
         } catch (error) {
-            console.error('Erro de conexão com o servidor:', error);
-            showNotification('error', 'Erro de Conexão', 'Não foi possível conectar ao servidor.');
+            retryCount++;
+            console.error(`❌ Tentativa ${retryCount} falhou:`, error.message);
+            
+            if (retryCount >= maxRetries) {
+                showNotification('error', 'Erro de Conexão', 'Não foi possível carregar os dados após várias tentativas.');
+                return false;
+            }
+            
+            // Esperar antes da próxima tentativa
+            await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
         }
-        
-        renderizarDemandas();
-        renderizarCobranca();
-        atualizarBadges();
-        atualizarMindmap();
     }
+    
+    return false;
+}
 
     // Salvar demanda no servidor
     async function salvarDemandaNoServidor(demanda) {
@@ -6882,30 +6935,48 @@ const content = `
 
     // Renderizar todas as abas
  // Renderizar todas as abas (ORDEM CORRETA)
-function renderizarTodasAsAbas() {
-    console.log('🔄 Renderizando todas as abas...');
+// Renderizar todas as abas (COM DELAY PARA EVITAR RATE LIMIT)
+async function renderizarTodasAsAbas() {
+    console.log('🔄 Renderizando todas as abas com delay...');
     
-    // 1. Primeiro atualizar o dashboard (que agora usa a mesma lógica)
+    // 1. Primeiro atualizar o dashboard
     atualizarDashboard();
     
-    // 2. Depois atualizar os badges (que usam a mesma lógica)
+    // Pequeno delay para não sobrecarregar
+    await new Promise(resolve => setTimeout(resolve, 200));
+    
+    // 2. Depois atualizar os badges
     atualizarBadges();
     
-    // 3. Renderizar as abas individuais
+    // 3. Renderizar as abas com delays entre elas
+    await new Promise(resolve => setTimeout(resolve, 200));
     renderizarDemandas();
+    
+    await new Promise(resolve => setTimeout(resolve, 200));
     renderizarAnalise();
+    
+    await new Promise(resolve => setTimeout(resolve, 200));
     renderizarAtrasadas();
+    
+    await new Promise(resolve => setTimeout(resolve, 200));
     renderizarAprovadas();
+    
+    await new Promise(resolve => setTimeout(resolve, 200));
     renderizarPendentesColaboradores();
+    
+    await new Promise(resolve => setTimeout(resolve, 200));
     renderizarCobranca();
     
     // 4. Atualizar outras partes
+    await new Promise(resolve => setTimeout(resolve, 200));
     atualizarRanking();
+    
+    await new Promise(resolve => setTimeout(resolve, 200));
     atualizarGraficos();
     
-    console.log('✅ Todas as abas renderizadas com contagem consistente!');
-}
-    // Importar demandas
+    console.log('✅ Todas as abas renderizadas sem sobrecarregar o servidor!');
+}  
+// Importar demandas
    // Modifique a função importarDemandas() para ficar assim:
 // Importar demandas
 // Importar demandas
